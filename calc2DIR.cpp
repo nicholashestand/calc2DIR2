@@ -942,7 +942,7 @@ int main( int argc, char* argv[] )
                 spectrum.R2D_R2[ it1 * spectrum.t1t3_npoints + it3 ] += spectrum.getR2D(it1, it3, "R2" );
             }
             */
-            printProgress( it1+1, spectrum.t1t3_npoints );
+            printProgress( it1-it0+1, spectrum.t1t3_npoints );
         }
         cerr << endl;
     }
