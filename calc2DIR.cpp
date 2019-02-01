@@ -8,6 +8,8 @@
 #include <math.h>
 #include <algorithm>
 #include "calc2DIR.h"
+#define MKL_Complex16 complex<double>
+#include <mkl.h>
 
 using namespace std;
 
@@ -22,9 +24,29 @@ IR2D::IR2D( string _inpf_ )
     // allocate variable arrays
     R1D             = new complex<double>[t1t3_npoints]();
     R2D_R1          = new complex<double>[t1t3_npoints*t1t3_npoints]();
-    R2D_R3          = new complex<double>[t1t3_npoints*t1t3_npoints]();
-    R2D_R4          = new complex<double>[t1t3_npoints*t1t3_npoints]();
-    R2D_R6          = new complex<double>[t1t3_npoints*t1t3_npoints]();
+    R2D_R2          = new complex<double>[t1t3_npoints*t1t3_npoints]();
+    H1              = new double [n1ex*n1ex]();
+    eiH1_t0t1       = new complex<double>[n1ex*n1ex]();
+    eiH1_t1t2       = new complex<double>[n1ex*n1ex]();
+    eiH1_t2t3       = new complex<double>[n1ex*n1ex]();
+    eiH1_t1_last    = new complex<double>[n1ex*n1ex]();
+    eiH1_t2_last    = new complex<double>[n1ex*n1ex]();
+    eiH1_t3_last    = new complex<double>[n1ex*n1ex]();
+    mu_eg_x         = new double[n1ex]();
+    mu_eg_y         = new double[n1ex]();
+    mu_eg_z         = new double[n1ex]();
+    mu_eg_t0_x      = new double[n1ex]();
+    mu_eg_t1_x      = new double[n1ex]();
+    mu_eg_t2_x      = new double[n1ex]();
+    mu_eg_t3_x      = new double[n1ex]();
+    mu_eg_t0_y      = new double[n1ex]();
+    mu_eg_t1_y      = new double[n1ex]();
+    mu_eg_t2_y      = new double[n1ex]();
+    mu_eg_t3_y      = new double[n1ex]();
+    mu_eg_t0_z      = new double[n1ex]();
+    mu_eg_t1_z      = new double[n1ex]();
+    mu_eg_t2_z      = new double[n1ex]();
+    mu_eg_t3_z      = new double[n1ex]();
 
     // open the energy and dipole files
     efile.open( _efile_, ios::binary );    
@@ -39,9 +61,29 @@ IR2D::~IR2D()
     // destroy arrays
     delete [] R1D;
     delete [] R2D_R1;
-    delete [] R2D_R3;
-    delete [] R2D_R4;
-    delete [] R2D_R6;
+    delete [] R2D_R2;
+    delete [] H1;
+    delete [] eiH1_t0t1;
+    delete [] eiH1_t1t2;
+    delete [] eiH1_t2t3;
+    delete [] eiH1_t1_last;
+    delete [] eiH1_t2_last;
+    delete [] eiH1_t3_last;
+    delete [] mu_eg_x;
+    delete [] mu_eg_y;
+    delete [] mu_eg_z;
+    delete [] mu_eg_t0_x;
+    delete [] mu_eg_t1_x;
+    delete [] mu_eg_t2_x;
+    delete [] mu_eg_t3_x;
+    delete [] mu_eg_t0_y;
+    delete [] mu_eg_t1_y;
+    delete [] mu_eg_t2_y;
+    delete [] mu_eg_t3_y;
+    delete [] mu_eg_t0_z;
+    delete [] mu_eg_t1_z;
+    delete [] mu_eg_t2_z;
+    delete [] mu_eg_t3_z;
 
     // close files
     efile.close();
@@ -77,10 +119,10 @@ int IR2D::readParam( string _inpf_ )
         else if ( para.compare("trjlen")      == 0 )  trjlen       = stoi(value);
         else if ( para.compare("output_file") == 0 )  _ofile_      = value;
         else if ( para.compare("time_step")   == 0 )  dt           = stof(value);
+        else if ( para.compare("nchrom")      == 0 )  nchrom       = stoi(value);
         else if ( para.compare("t1t3_max")    == 0 )  t1t3_max     = stof(value);
         else if ( para.compare("t2")          == 0 )  t2           = stof(value);
         else if ( para.compare("lifetimet1")  == 0 )  lifetime_T1  = stof(value);
-        else if ( para.compare("anharm")      == 0 )  anharm       = stof(value);
         else if ( para.compare("nsamples")    == 0 )  nsamples     = stoi(value);
         else if ( para.compare("sample_every") == 0 ) sample_every = stof(value);
         else if ( para.compare("fftlen")      == 0 )  fftlen       = stoi(value);
@@ -96,10 +138,10 @@ int IR2D::readParam( string _inpf_ )
     tellParam<int>( "trjlen", trjlen );
     tellParam<string>( "output_file", _ofile_ );
     tellParam<double>( "time_step", dt );
+    tellParam<int>( "nchrom", nchrom );
     tellParam<double>( "t1t3_max", t1t3_max );
     tellParam<double>( "t2", t2 );
     tellParam<double>( "lifetimeT1", lifetime_T1 );
-    tellParam<double>( "anharm", anharm );
     tellParam<int>( "nsamples", nsamples );
     tellParam<int>( "sample_every", sample_every );
     tellParam<int>( "fftlen", fftlen );
@@ -116,6 +158,10 @@ int IR2D::readParam( string _inpf_ )
 
     // set number of points in response functions based on t1t3_max and dt
     t1t3_npoints = static_cast<int>(t1t3_max/dt);
+
+    // set number of one- and two-exciton states
+    n1ex = nchrom;
+    n2ex = nchrom*(nchrom+1)/2;
 
     // shift energies by mean of spectral window to avoid high frequency oscillations
     shift = 0.5*(window1 + window0);
@@ -148,82 +194,274 @@ void IR2D::fileReadErr( string _fn_ )
     cerr << "ERROR:: Reading " << _fn_ << " failed. Probably reached EOF...Aborting." << endl;
 }
 
-int IR2D::readEframe( int frame, string which )
+int IR2D::readEframe( int frame )
 // Read the energy file
 {
-    int     frameTmp;
-    float   energyTmp;
+    int     frameTmp, nelm, i, j;
+    float   *Htmp;
     int64_t file_offset;
 
-    file_offset = frame*(sizeof(int)+sizeof(float));
+    nelm = n1ex*(n1ex+1)/2;
+    Htmp = new float[nelm]();
+    file_offset = frame*(sizeof(int)+sizeof(float)*(nelm));
     efile.seekg( file_offset );
 
     // the energy for each frame is stored on a seperate line
     // with an integer frame number at the beginning of the line
-    efile.read( (char*)&frameTmp , sizeof(int) );
+    efile.read( (char*)&frameTmp, sizeof(int) );
     if ( not efile.good() ){ fileReadErr( _efile_ ); return 1;}
-    efile.read( (char*)&energyTmp, sizeof(float) );
+    efile.read( (char*)Htmp, nelm*sizeof(float) );
     if ( not efile.good() ){ fileReadErr( _efile_ ); return 1;}
 
-    // only keep the energies, ignore the couplings for now
-    if      ( which.compare("t1") == 0 ) energy_t1 = energyTmp - shift;
-    else if ( which.compare("t3") == 0 ) energy_t3 = energyTmp - shift;
+    // save the one-exciton Hamiltonian
+    for( i = 0; i < n1ex; i ++ ){
+    for( j = i; j < n1ex; j++ ){
+        H1[i*n1ex + j] = Htmp[i*n1ex + (j-i)];
+        H1[j*n1ex + i] = H1[i*n1ex + j];
+    }
+        H1[i*n1ex + i] -= shift; // subtract the frequency shift
+    }
+
+    delete [] Htmp;
+    return IR2DOK;
+}
+
+int IR2D::readDframe( int frame )
+// Read the dipole file
+{
+    int     frameTmp, i, ex;
+    float   *dipoleTmp;
+    int64_t file_offset;
+
+    dipoleTmp = new float[ 3*n1ex ];
+    file_offset = frame*(sizeof(int)+sizeof(float)*3*n1ex);
+    dfile.seekg( file_offset );
+
+    dfile.read( (char*)&frameTmp, sizeof(int) );
+    if ( not dfile.good() ){ fileReadErr( _dfile_ ); return 1;}
+    dfile.read( (char*)dipoleTmp, sizeof(float)*3*n1ex );
+    if ( not dfile.good() ){ fileReadErr( _dfile_ ); return 1;}
+
+    // put these into the dipole vector variable
+    // note that in the bin file all x's come first, then y's, etc
+    for ( ex = 0; ex < n1ex; ex ++ ){
+        mu_eg_x[ex] = dipoleTmp[ex];
+        mu_eg_y[ex] = dipoleTmp[ex+n1ex];
+        mu_eg_z[ex] = dipoleTmp[ex+2*n1ex];
+    }
+
+    delete[] dipoleTmp;
+    return IR2DOK;
+}
+
+int IR2D::setMUatT( string which )
+// set dipole vector for a given time
+{
+    int ex;
+
+    if ( which.compare("t0") == 0 ){
+        memcpy( mu_eg_t0_x, mu_eg_x, sizeof(double)*n1ex );
+        memcpy( mu_eg_t0_y, mu_eg_y, sizeof(double)*n1ex );
+        memcpy( mu_eg_t0_z, mu_eg_z, sizeof(double)*n1ex );
+    }
+    else if ( which.compare("t1") == 0 ){
+        memcpy( mu_eg_t1_x, mu_eg_x, sizeof(double)*n1ex );
+        memcpy( mu_eg_t1_y, mu_eg_y, sizeof(double)*n1ex );
+        memcpy( mu_eg_t1_z, mu_eg_z, sizeof(double)*n1ex );
+    }
+    else if ( which.compare("t2") == 0 ){
+        memcpy( mu_eg_t2_x, mu_eg_x, sizeof(double)*n1ex );
+        memcpy( mu_eg_t2_y, mu_eg_y, sizeof(double)*n1ex );
+        memcpy( mu_eg_t2_z, mu_eg_z, sizeof(double)*n1ex );
+    }
+    else if ( which.compare("t3") == 0 ){
+        memcpy( mu_eg_t3_x, mu_eg_x, sizeof(double)*n1ex );
+        memcpy( mu_eg_t3_y, mu_eg_y, sizeof(double)*n1ex );
+        memcpy( mu_eg_t3_z, mu_eg_z, sizeof(double)*n1ex );
+    }
+
     else{
-        cout << "ERROR:: IR2D::readEframe which= " << which << " unknown." << endl;
+        cout << "ERROR:: IR2D::setMUatT which= " << which << " is unknown." << endl;
         return 1;
     }
 
     return IR2DOK;
 }
 
-int IR2D::readDframe( int frame, string which )
-// Read the dipole file
+int IR2D::propigateH1( int t0, int t1, string which )
+// integrate the 1-exciton Hamiltonian
 {
-    int     frameTmp, i;
-    float   dipoleTmp[ 3 ];
-    int64_t file_offset;
+    int i;
+    complex<double> *eiH1, *tmp;
+    
+    eiH1 = new complex<double>[n1ex*n1ex];
+    tmp  = new complex<double>[n1ex*n1ex];
+    
+    // deterimine e^-iH1dt/(2*Hbar), return to eiH1
+    doeiH( eiH1, H1, n1ex );
 
-    file_offset = frame*(sizeof(int)+sizeof(float)*3);
-    dfile.seekg( file_offset );
-
-    dfile.read( (char*)&frameTmp, sizeof(int) );
-    if ( not dfile.good() ){ fileReadErr( _dfile_ ); return 1;}
-    dfile.read( (char*)dipoleTmp, sizeof(float)*3 );
-    if ( not dfile.good() ){ fileReadErr( _dfile_ ); return 1;}
-
-    // put these into the dipole vector variable
-    // note that in the bin file all x's come first, then y's, etc
-    for ( i = 0; i < 3; i ++ ){
-        if      ( which.compare("t0") == 0 ) dipole_t0[i] = dipoleTmp[i];
-        else if ( which.compare("t1") == 0 ) dipole_t1[i] = dipoleTmp[i];
-        else if ( which.compare("t2") == 0 ) dipole_t2[i] = dipoleTmp[i];
-        else if ( which.compare("t3") == 0 ) dipole_t3[i] = dipoleTmp[i];
-        else{
-            cout << "ERROR: IR2D::readDframe which= " << which << " unknown." << endl;
-            return 1;
+    // do the integration
+    if ( which.compare("t0-t1") == 0 ){
+        // do the integration
+        if ( t1 == t0 ){
+            // at t1==t0, the integral is 0, so e^0 is Identity matrix
+            for (i = 0; i < n1ex; i ++ ){
+                eiH1_t0t1[i*n1ex +i] = complex_one;
+            }
         }
+        else{
+            // integrate with the trapezoid rule using the last and current
+            // exponentiated hamiltonians
+            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                         n1ex, n1ex, n1ex, &complex_one, eiH1_t0t1, n1ex, \
+                         eiH1_t1_last, n1ex, &complex_zero, tmp, n1ex );
+            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                         n1ex, n1ex, n1ex, &complex_one, tmp, n1ex, \
+                         eiH1, n1ex, &complex_zero, eiH1_t0t1, n1ex );
+        }
+        memcpy( eiH1_t1_last, eiH1, sizeof(complex<double>)*n1ex*n1ex );
     }
+    else if ( which.compare("t1-t2") == 0 ){
+        // do the integration
+        if ( t1 == t0 ){
+            // at t1==t0, the integral is 0, so e^0 is Identity matrix
+            for (i = 0; i < n1ex; i ++ ){
+                eiH1_t1t2[i*n1ex +i] = complex_one;
+            }
+        }
+        else{
+            // integrate with the trapezoid rule using the last and current
+            // exponentiated hamiltonians
+            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                         n1ex, n1ex, n1ex, &complex_one, eiH1_t1t2, n1ex, \
+                         eiH1_t2_last, n1ex, &complex_zero, tmp, n1ex );
+            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                         n1ex, n1ex, n1ex, &complex_one, tmp, n1ex, \
+                         eiH1, n1ex, &complex_zero, eiH1_t1t2, n1ex );
+        }
+        memcpy( eiH1_t2_last, eiH1, sizeof(complex<double>)*n1ex*n1ex );
+    }
+    else if ( which.compare("t2-t3") == 0 ){
+        // do the integration
+        if ( t1 == t0 ){
+            // at t1==t0, the integral is 0, so e^0 is Identity matrix
+            for (i = 0; i < n1ex; i ++ ){
+                eiH1_t2t3[i*n1ex +i] = complex_one;
+            }
+        }
+        else{
+            // integrate with the trapezoid rule using the last and current
+            // exponentiated hamiltonians
+            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                         n1ex, n1ex, n1ex, &complex_one, eiH1_t2t3, n1ex, \
+                         eiH1_t3_last, n1ex, &complex_zero, tmp, n1ex );
+            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                         n1ex, n1ex, n1ex, &complex_one, tmp, n1ex, \
+                         eiH1, n1ex, &complex_zero, eiH1_t2t3, n1ex );
+        }
+        memcpy( eiH1_t3_last, eiH1, sizeof(complex<double>)*n1ex*n1ex );
+    }
+    else{
+        cout << "ERROR:: IR2D::propigateH1 which= " << which << \
+                " is unknown." << endl; return 1;
+    }
+
+    delete [] eiH1;
+    delete [] tmp;
+    return IR2DOK;
+}
+
+int IR2D::doeiH( complex<double> *eiH, double *H, int N )
+// get the exponential of exp(i H dt/hbar)
+{
+    complex<double> *evec, *tmp, arg;
+    double *W;
+    int i = 0, j = 0, info;
+
+    // allocate arrays
+    evec = new complex<double>[N*N]();
+    tmp  = new complex<double>[N*N]();
+    W    = new double[N]();
+
+    // get eigenvalues and eigenvector of H
+    if ( info = LAPACKE_dsyevd( LAPACK_ROW_MAJOR, 'V', 'U', N, H, N, W ) != 0 ){
+        cout << "WARNING:: LAPACKE_dsyeved returned " << info << endl;
+        return 1;
+    }
+
+    // exponentiate eigenvalues
+    for ( i = 0; i < N; i ++ ){
+        arg = -img*W[i]*dt/(2.*HBAR); // divide by two to do trapezoid integration
+        eiH[i*N+i] = exp(arg);
+    }
+
+    // promote eigenvectors to complex
+    for ( i = 0; i < N; i ++ ){
+    for ( j = 0; j < N; j ++ ){
+        evec[i*N+j].real(H[i*N+j]);
+        evec[i*N+j].imag(0.);
+    }
+    }
+    
+    // convert back to original basis using matrix multiplications
+    cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                 N, N, N, &complex_one, evec, N, eiH, N, \
+                 &complex_zero, tmp, N );
+    cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasTrans, \
+                 N, N, N, &complex_one, tmp, N, evec, N, \
+                 &complex_zero, eiH, N );
+
+    // delete arrays
+    delete [] evec;
+    delete [] tmp;
+    delete [] W;
 
     return IR2DOK;
 }
 
-complex<double> IR2D::getR1D( int t1 )
+complex<double> IR2D::getR1D()
 // return the linear response function at a given t1
-// See Eq 7.10 from Hamm and Zanni
 {
-    double mu;
-    complex<double> R1D;
-    vec3 polx={1.,0.,0.}, poly={0.,1.,0.}, polz={0.,0.,1.};
+    int i;
+    complex<double> *mu0, *mu1, *tmp;
+    complex<double> R1D, res;
 
-    // get dipole part for isotropically averaged spectrum
-    // NOTE: The Condon approximation is NOT made here
-    mu = 0.;
-    mu+=dot3(dipole_t0,polx)*dot3(dipole_t1,polx);
-    mu+=dot3(dipole_t0,poly)*dot3(dipole_t1,poly);
-    mu+=dot3(dipole_t0,polz)*dot3(dipole_t1,polz);
+    mu0 = new complex<double>[n1ex];
+    mu1 = new complex<double>[n1ex];
+    tmp = new complex<double>[n1ex];
 
-    // get the response function
-    R1D = img*mu*eint_t1*exp(-t1*dt/lifetime_T2);
+    R1D = complex_zero;
+
+    // get the isotropically averaged spectrum -- x component
+    for ( i = 0; i < n1ex; i ++ ) mu0[i] = mu_eg_t0_x[i];
+    for ( i = 0; i < n1ex; i ++ ) mu1[i] = mu_eg_t1_x[i];
+    cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                &complex_one, eiH1_t0t1, n1ex, mu0, 1, \
+                &complex_zero, tmp, 1 );
+    cblas_zdotu_sub( n1ex, mu1, 1, tmp, 1, &res );
+    R1D += res;
+
+    // get the isotropically averaged spectrum -- y component
+    for ( i = 0; i < n1ex; i ++ ) mu0[i] = mu_eg_t0_y[i];
+    for ( i = 0; i < n1ex; i ++ ) mu1[i] = mu_eg_t1_y[i];
+    cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                &complex_one, eiH1_t0t1, n1ex, mu0, 1, \
+                &complex_zero, tmp, 1 );
+    cblas_zdotu_sub( n1ex, mu1, 1, tmp, 1, &res );
+    R1D += res;
+
+    // get the isotropically averaged spectrum -- x component
+    for ( i = 0; i < n1ex; i ++ ) mu0[i] = mu_eg_t0_z[i];
+    for ( i = 0; i < n1ex; i ++ ) mu1[i] = mu_eg_t1_z[i];
+    cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                &complex_one, eiH1_t0t1, n1ex, mu0, 1, \
+                &complex_zero, tmp, 1 );
+    cblas_zdotu_sub( n1ex, mu1, 1, tmp, 1, &res );
+    R1D += res;
+
+    delete [] mu0;
+    delete [] mu1;
+    delete [] tmp;
 
     return R1D;
 }
@@ -238,6 +476,7 @@ complex<double> IR2D::getR2D( int t1, int t3, string which )
     double lifetime_T2_12 = 2.*lifetime_T1/3.;// See Hamm and Zanni eq 4.21
     lifetime_T2_12 = lifetime_T2;             // set equal here, see Jansen 2012 
 
+    /*
     R2D = complex_zero;
     // get dipole part for isotropically averaged ZZZZ spectrum
     // NOTE: The Condon approximation is NOT made here
@@ -302,51 +541,9 @@ complex<double> IR2D::getR2D( int t1, int t3, string which )
         cout << "ERROR:: IR2D::getR2D which= " << which << " is unknown. Aborting." << endl;
         exit(EXIT_FAILURE);
     }
+    */
 
     return R2D;
-}
-
-int IR2D::get_eint( int t, string which )
-// integral from t0 to t1 for linear and third order response functions of 01 frequency
-// See Eq 7.10 from Hamm and Zanni for linear response function
-// See Eq 7.35 from Hamm and Zanni for third order response function
-{
-    complex<double> arg;
-
-    if ( which.compare("t1") == 0 ){
-        // reset integral to zero at t1 = 0 (the exponential will be 1)
-        if ( t == 0 ) eint_t1 = complex_one;
-        else {
-            // integrate the equation using the trapezoid rule
-            arg = -img*dt*(energy_t1_last+energy_t1)/(2.*HBAR);
-            eint_t1 *= exp(arg);
-        }
-        // save current energies for next time step so can do integration
-        energy_t1_last = energy_t1;
-    }
-    else if ( which.compare("t3") == 0 ){
-        // reset integral to zero at t3 = 0 (the exponential will be 1)
-        if ( t == 0 ) eint_t3 = complex_one;
-        else {
-            // integrate the equation using the trapezoid rule
-            arg = -img*dt*(energy_t3_last+energy_t3)/(2.*HBAR);
-            eint_t3 *= exp(arg);
-        }
-        // save current energies for next time step so can do integration
-        energy_t3_last = energy_t3;
-    }
-    else{
-        cout << "ERROR:: IR2D::get_eint which= " << which << " unknown." << endl;
-        return 1;
-    }
-    
-    return IR2DOK;
-}
-
-double IR2D::dot3( vec3 a, vec3 b )
-// dot product of 3 vector
-{
-    return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; 
 }
 
 int IR2D::writeR1D()
@@ -377,6 +574,7 @@ int IR2D::writeR2D()
     int t1, t3;
     complex<double> Rtmp;
 
+    /*
     // write rephasing response function
     fn=_ofile_+"-RparI.dat";
     ofile.open( fn );
@@ -414,6 +612,7 @@ int IR2D::writeR2D()
         }
     }
     ofile.close();
+    */
 
     return IR2DOK;
 }
@@ -436,7 +635,7 @@ int IR2D::write1Dfft()
     // scale fftOut to keep total area of the spectrum conserved and normalize
     // by root(fftlen) since FFTW3 does not
     // the -1 makes it look like absorption spectrum
-    scale = -dt*fftlen/(2.*PI*HBAR*sqrt(fftlen));
+    scale = dt*fftlen/(2.*PI*HBAR*sqrt(fftlen));
      
     // do fft
     plan = fftw_plan_dft_1d( fftlen, reinterpret_cast<fftw_complex*>(fftIn), \
@@ -450,22 +649,22 @@ int IR2D::write1Dfft()
         exit(EXIT_FAILURE);
     }
     
-    // See Eq 4.8 from Hamm and Zanni -- Absorptive part
+    // Absorptive part
+    for ( i = 0; i < fftlen ; i ++ ) fftIn[i] = complex_zero;
+    for ( t1 = 0; t1 < t1t3_npoints; t1 ++ ){
+        fftIn[t1]          = R1D[t1];
+        if ( t1 == 0 ) continue; // dont take hermitian at t=0
+        fftIn[fftlen-t1] = conj(R1D[t1]);
+    }
+    fftw_execute(plan); 
+    for ( t1 = 0; t1 < fftlen; t1 ++ ) res[t1].real(fftOut[t1].real());
+
+    // Dispersive part
     for ( i = 0; i < fftlen ; i ++ ) fftIn[i] = complex_zero;
     for ( t1 = 0; t1 < t1t3_npoints; t1 ++ ){
         fftIn[t1]          = img*R1D[t1];
         if ( t1 == 0 ) continue; // dont take hermitian at t=0
         fftIn[fftlen-t1] = conj(img*R1D[t1]);
-    }
-    fftw_execute(plan); 
-    for ( t1 = 0; t1 < fftlen; t1 ++ ) res[t1].real(fftOut[t1].real());
-
-    // See Eq 4.11 from Hamm and Zanni -- Dispersive part
-    for ( i = 0; i < fftlen ; i ++ ) fftIn[i] = complex_zero;
-    for ( t1 = 0; t1 < t1t3_npoints; t1 ++ ){
-        fftIn[t1]          = -R1D[t1];
-        if ( t1 == 0 ) continue; // dont take hermitian at t=0
-        fftIn[fftlen-t1] = conj(-R1D[t1]);
     }
     fftw_execute(plan); 
     fftw_destroy_plan(plan);
@@ -511,6 +710,7 @@ int IR2D::write2DRabs()
     fftw_plan plan;
     int       t1, t3, i, j;
 
+    /*
     // allocate arrays
     fftIn  = new complex<double>[fftlen*fftlen]();
     fftOut = new complex<double>[fftlen*fftlen]();
@@ -580,6 +780,7 @@ int IR2D::write2DRabs()
     delete [] fftIn;
     delete [] fftOut;
     delete [] res;
+    */
 
     return IR2DOK;
 }
@@ -678,9 +879,10 @@ void printProgress( int currentStep, int totalSteps )
 int main( int argc, char* argv[] )
 {
     int sample;
-    int frame_t0, frame_t1, frame_t2, frame_t3;
-    int t1, t2, t3;
+    int it0, it1, it2, it3;
+    int it1_max, it2_max, it3_max;
 
+    // check user input to program
     if ( argc != 2 ){
         cout << "ERROR:: Program expects the name of the input" << 
                 "file as the only argument. Aborting." << endl;
@@ -688,41 +890,47 @@ int main( int argc, char* argv[] )
     }
 
     // get input file name and initialize IR2D class
-    IR2D spectrum( argv[1] );
+    IR2D spectrum( argv[1] ); 
 
     // set t2 waiting time in units of frames
-    t2 = static_cast<int>(spectrum.t2/spectrum.dt);
+    it2_max = static_cast<int>(spectrum.t2/spectrum.dt);
 
     // Loop over the trajectory
     for ( sample = 0; sample < spectrum.nsamples; sample ++ ){
 
         // get frame number, read and save dipole at t0
-        frame_t0 = sample*static_cast<int>(spectrum.sample_every/spectrum.dt);
+        it0 = sample*static_cast<int>(spectrum.sample_every/spectrum.dt);
         fprintf(stderr, "    Now processing sample %d/%d starting at %.2f ps\n", \
-                sample+1, spectrum.nsamples, frame_t0*spectrum.dt ); fflush(stderr);
-        if ( spectrum.readDframe(frame_t0, "t0" ) != IR2DOK ) exit(EXIT_FAILURE);;
+                sample+1, spectrum.nsamples, it0*spectrum.dt ); fflush(stderr);
+        if ( spectrum.readDframe( it0 ) != IR2DOK ) exit(EXIT_FAILURE);
+        if ( spectrum.setMUatT( "t0" )  != IR2DOK ) exit(EXIT_FAILURE);
 
         // loop over t1
-        for ( t1 = 0; t1 < spectrum.t1t3_npoints; t1 ++ ){
-            // get frame number for current t1
-            frame_t1 = frame_t0 + t1;
+        it1_max = it0 + spectrum.t1t3_npoints;
+        for ( it1 = it0; it1 < it1_max; it1 ++ ){
 
             // read in energy and dipole
-            if ( spectrum.readEframe(frame_t1, "t1") != IR2DOK ) exit(EXIT_FAILURE);
-            if ( spectrum.readDframe(frame_t1, "t1") != IR2DOK ) exit(EXIT_FAILURE);
-            
+            if ( spectrum.readEframe(it1) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.propigateH1( it0, it1, "t0-t1" ) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.readDframe(it1) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.setMUatT("t1")  != IR2DOK ) exit(EXIT_FAILURE);
+
             // get exponential integral and 1D response function
-            if ( spectrum.get_eint( t1, "t1" ) != IR2DOK ) exit(EXIT_FAILURE);
-            spectrum.R1D[t1] += spectrum.getR1D( t1 );
+            spectrum.R1D[it1-it0] += spectrum.getR1D();
 
             // get frame number and dipole for time t2
-            frame_t2 = frame_t1 + t2;
-            if ( spectrum.readDframe(frame_t2, "t2") != IR2DOK ) exit(EXIT_FAILURE);
+            /*
+            frame_t2 = frame_t1 + it2;
+            if ( spectrum.readDframe(it2) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.setMUatT("t2")  != IR2DOK ) exit(EXIT_FAILURE);
+            */
+
 
             // loop over t3 at current t1
-            for ( t3 = 0; t3 < spectrum.t1t3_npoints; t3 ++ ){
+            /*
+            for ( it3 = 0; it3 < spectrum.t1t3_npoints; it3 ++ ){
                 // get frame number for current t3
-                frame_t3 = frame_t2 + t3;
+                frame_t3 = frame_t2 + it3;
 
                 // read in energy and dipole
                 if ( spectrum.readEframe(frame_t3, "t3") != IR2DOK ) exit(EXIT_FAILURE);
@@ -730,31 +938,30 @@ int main( int argc, char* argv[] )
 
                 // get exponential integral and 2D response function 
                 if ( spectrum.get_eint(t3, "t3") != IR2DOK ) exit(EXIT_FAILURE);
-                spectrum.R2D_R1[ t1 * spectrum.t1t3_npoints + t3 ] += spectrum.getR2D(t1, t3, "R1" );
-                spectrum.R2D_R3[ t1 * spectrum.t1t3_npoints + t3 ] += spectrum.getR2D(t1, t3, "R3" );
-                spectrum.R2D_R4[ t1 * spectrum.t1t3_npoints + t3 ] += spectrum.getR2D(t1, t3, "R4" );
-                spectrum.R2D_R6[ t1 * spectrum.t1t3_npoints + t3 ] += spectrum.getR2D(t1, t3, "R6" );
+                spectrum.R2D_R1[ it1 * spectrum.t1t3_npoints + it3 ] += spectrum.getR2D(it1, it3, "R1" );
+                spectrum.R2D_R2[ it1 * spectrum.t1t3_npoints + it3 ] += spectrum.getR2D(it1, it3, "R2" );
             }
-            printProgress( t1+1, spectrum.t1t3_npoints );
+            */
+            printProgress( it1+1, spectrum.t1t3_npoints );
         }
         cerr << endl;
     }
 
-    // normalize response functions by number of samples
-    for ( t1 = 0; t1 < spectrum.t1t3_npoints; t1 ++ ){
-        spectrum.R1D[t1]/=(1.*spectrum.nsamples);
-        for ( t3 = 0; t3 < spectrum.t1t3_npoints; t3 ++ ){
-            spectrum.R2D_R1[ t1 * spectrum.t1t3_npoints + t3 ] /= ( 1.*spectrum.nsamples );
-            spectrum.R2D_R3[ t1 * spectrum.t1t3_npoints + t3 ] /= ( 1.*spectrum.nsamples );
-            spectrum.R2D_R4[ t1 * spectrum.t1t3_npoints + t3 ] /= ( 1.*spectrum.nsamples );
-            spectrum.R2D_R6[ t1 * spectrum.t1t3_npoints + t3 ] /= ( 1.*spectrum.nsamples );
+    // normalize response functions by number of samples and add phenomelogical decay
+    for ( it1 = 0; it1 < spectrum.t1t3_npoints; it1 ++ ){
+        spectrum.R1D[it1]*=exp(-it1*spectrum.dt/spectrum.lifetime_T2)/(1.*spectrum.nsamples);
+        /*
+        for ( it3 = 0; it3 < spectrum.t1t3_npoints; it3 ++ ){
+            spectrum.R2D_R1[ it1 * spectrum.t1t3_npoints + it3 ] /= ( 1.*spectrum.nsamples );
+            spectrum.R2D_R2[ it1 * spectrum.t1t3_npoints + it3 ] /= ( 1.*spectrum.nsamples );
         }
+        */
     }
 
     // do fourier transforms and write them out
     if ( spectrum.writeR1D()    != IR2DOK ) exit(EXIT_FAILURE);
-    if ( spectrum.writeR2D()    != IR2DOK ) exit(EXIT_FAILURE);
+    //if ( spectrum.writeR2D()    != IR2DOK ) exit(EXIT_FAILURE);
     if ( spectrum.write1Dfft()  != IR2DOK ) exit(EXIT_FAILURE);
-    if ( spectrum.write2DRabs() != IR2DOK ) exit(EXIT_FAILURE);
+    //if ( spectrum.write2DRabs() != IR2DOK ) exit(EXIT_FAILURE);
     cout << ">>> Done!" << endl;
 }

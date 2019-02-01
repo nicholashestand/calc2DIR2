@@ -22,13 +22,15 @@ class IR2D
         // variables -- set default parameters
         string _efile_="e.dat";         // name for energy file
         string _dfile_="d.dat";         // name for dipole file
-        string _ofile_="spectrum";      // name for output file
+        string _ofile_="spec";          // name for output file
         double dt = 0.010 ;             // time step in ps
-        double t1t3_max=10.;            // t1 and t3 max in ps
+        int    nchrom=1;                // number of chromophores
+        int    n1ex;                    // number of one-exciton states
+        int    n2ex;                    // number of one-exciton states
+        double t1t3_max=2.5;            // t1 and t3 max in ps
         double t2=0.;                   // t2 in ps
         double lifetime_T1=0.2;         // lifetime T1 in ps
         double lifetime_T2;             // lifetime T2 in ps
-        double anharm=14.0;             // anharmonicity in cm-1
         int    nsamples=1 ;             // number of samples
         double sample_every=10.;        // how often to take a new sample in ps
         int    trjlen=0;                // number of frames in trajectory files
@@ -38,15 +40,29 @@ class IR2D
         double window1 = 1700;          // upper limit if spectral window in cm-1
         double shift;                   // reference frequency in cm-1
 
-        // arrays to hold energy and dipole
-        double energy_t1;               // energy at frame t1
-        double energy_t1_last;          // energy at frame t1 - 1
-        double energy_t3;               // energy at frame t3
-        double energy_t3_last;          // energy at frame t3 - 1
-        vec3   dipole_t0;               // dipole vector at frame t0
-        vec3   dipole_t1;               // dipole vector at frame t0 + t1
-        vec3   dipole_t2;               // dipole vector at frame t0 + t1 + t2
-        vec3   dipole_t3;               // dipole vector at frame t0 + t1 + t2 + t3
+        // arrays to hold Hamiltonian and dipole
+        double *H1;                     // one-exciton hamiltonian at current t
+        complex<double> *eiH1_t0t1;     // one-exciton hamiltonian integrated from time t0 to t1
+        complex<double> *eiH1_t1t2;     // one-exciton hamiltonian integrated from time t1 to t2
+        complex<double> *eiH1_t2t3;     // one-exciton hamiltonian integrated from time t2 to t3
+        complex<double> *eiH1_t1_last;  // one-exciton hamiltonian at previous timestep
+        complex<double> *eiH1_t2_last;  // one-exciton hamiltonian at previous timestep
+        complex<double> *eiH1_t3_last;  // one-exciton hamiltonian at previous timestep
+        double *mu_eg_x;                // ground-to-one-exciton dipole vector
+        double *mu_eg_y;                // ground-to-one-exciton dipole vector
+        double *mu_eg_z;                // ground-to-one-exciton dipole vector
+        double *mu_eg_t0_x;             // ground-to-one-exciton dipole vector at t0 - x component
+        double *mu_eg_t1_x;             // ground-to-one-exciton dipole vector at t1 - x component
+        double *mu_eg_t2_x;             // ground-to-one-exciton dipole vector at t2 - x component
+        double *mu_eg_t3_x;             // ground-to-one-exciton dipole vector at t3 - x component
+        double *mu_eg_t0_y;             // ground-to-one-exciton dipole vector at t0 - y component
+        double *mu_eg_t1_y;             // ground-to-one-exciton dipole vector at t1 - y component
+        double *mu_eg_t2_y;             // ground-to-one-exciton dipole vector at t2 - y component
+        double *mu_eg_t3_y;             // ground-to-one-exciton dipole vector at t3 - y component
+        double *mu_eg_t0_z;             // ground-to-one-exciton dipole vector at t0 - z component
+        double *mu_eg_t1_z;             // ground-to-one-exciton dipole vector at t1 - z component
+        double *mu_eg_t2_z;             // ground-to-one-exciton dipole vector at t2 - z component
+        double *mu_eg_t3_z;             // ground-to-one-exciton dipole vector at t3 - z component
 
         // complex constants
         const complex<double> img          = {0.,1.};   
@@ -55,12 +71,8 @@ class IR2D
       
         // response functions
         complex<double> *R1D;           // Linear response function
-        complex<double> *R2D_R1;        // third order response function R1=R2
-        complex<double> *R2D_R3;        // third order response function R3
-        complex<double> *R2D_R4;        // third order response function R4=R5
-        complex<double> *R2D_R6;        // third order response function R6
-        complex<double> eint_t1;        // integral from 0 to t1 of dw(tau)_01
-        complex<double> eint_t3;        // integral from t1+t2 to t1+t2+t3 of dw(tau)_01
+        complex<double> *R2D_R1;        // third order response function rephasing
+        complex<double> *R2D_R2;        // third order response function non-rephasing
 
         // file handles
         ifstream efile;
@@ -70,9 +82,11 @@ class IR2D
         void fileOpenErr( string _fn_ );
         void fileReadErr( string _fn_ );
         int  readParam( string _inpf_ );
-        int  readEframe( int frame, string which );
-        int  readDframe( int frame, string which );
-        int  get_eint( int t1, string which );
+        int  readEframe( int frame );
+        int  readDframe( int frame );
+        int  setMUatT( string which );
+        int  propigateH1( int t0, int t1, string which );
+        int  doeiH( complex<double> *eiH1, double *H1, int n1ex );
         int  writeR1D();
         int  writeR2D();
         int  write1Dfft();
@@ -80,7 +94,7 @@ class IR2D
         int  write2Dout( complex<double> *data, string fn, string which, int n);
         double dot3( vec3 a, vec3 b );
         template<class T> void tellParam( string param, T value );
-        complex<double> getR1D( int t1 );
+        complex<double> getR1D( );
         complex<double> getR2D( int t1, int t2, string which );
         
 };
