@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <iomanip>
 #include <stdio.h>
 #include <complex.h>
 #include <fftw3.h>
@@ -22,9 +23,11 @@ IR2D::IR2D( string _inpf_ )
     if ( readParam( _inpf_ ) != IR2DOK ) exit( EXIT_FAILURE );
 
     // allocate variable arrays
+    // response functions
     R1D             = new complex<double>[t1t3_npoints]();
     R2D_R1          = new complex<double>[t1t3_npoints*t1t3_npoints]();
     R2D_R2          = new complex<double>[t1t3_npoints*t1t3_npoints]();
+    // one exciton
     H1              = new double [n1ex*n1ex]();
     eiH1_t0t1       = new complex<double>[n1ex*n1ex]();
     eiH1_t1t2       = new complex<double>[n1ex*n1ex]();
@@ -47,6 +50,24 @@ IR2D::IR2D( string _inpf_ )
     mu_eg_t1_z      = new double[n1ex]();
     mu_eg_t2_z      = new double[n1ex]();
     mu_eg_t3_z      = new double[n1ex]();
+    // two exciton
+    H2              = new double [n2ex*n2ex]();
+    eiH2_t1t2       = new complex<double>[n2ex*n2ex]();
+    eiH2_t2t3       = new complex<double>[n2ex*n2ex]();
+    eiH2_t2_last    = new complex<double>[n2ex*n2ex]();
+    eiH2_t3_last    = new complex<double>[n2ex*n2ex]();
+    mu_ce_x         = new double[n1ex*n2ex]();
+    mu_ce_y         = new double[n1ex*n2ex]();
+    mu_ce_z         = new double[n1ex*n2ex]();
+    mu_ce_t1_x      = new double[n1ex*n2ex]();
+    mu_ce_t2_x      = new double[n1ex*n2ex]();
+    mu_ce_t3_x      = new double[n1ex*n2ex]();
+    mu_ce_t1_y      = new double[n1ex*n2ex]();
+    mu_ce_t2_y      = new double[n1ex*n2ex]();
+    mu_ce_t3_y      = new double[n1ex*n2ex]();
+    mu_ce_t1_z      = new double[n1ex*n2ex]();
+    mu_ce_t2_z      = new double[n1ex*n2ex]();
+    mu_ce_t3_z      = new double[n1ex*n2ex]();
 
     // open the energy and dipole files
     efile.open( _efile_, ios::binary );    
@@ -59,9 +80,11 @@ IR2D::~IR2D()
 // Default Destructor
 {
     // destroy arrays
+    // response functions
     delete [] R1D;
     delete [] R2D_R1;
     delete [] R2D_R2;
+    // one-exciton
     delete [] H1;
     delete [] eiH1_t0t1;
     delete [] eiH1_t1t2;
@@ -84,6 +107,24 @@ IR2D::~IR2D()
     delete [] mu_eg_t1_z;
     delete [] mu_eg_t2_z;
     delete [] mu_eg_t3_z;
+    // two-exciton
+    delete [] H2;
+    delete [] eiH2_t1t2;
+    delete [] eiH2_t2t3;
+    delete [] eiH2_t2_last;
+    delete [] eiH2_t3_last;
+    delete [] mu_ce_x;
+    delete [] mu_ce_y;
+    delete [] mu_ce_z;
+    delete [] mu_ce_t1_x;
+    delete [] mu_ce_t2_x;
+    delete [] mu_ce_t3_x;
+    delete [] mu_ce_t1_y;
+    delete [] mu_ce_t2_y;
+    delete [] mu_ce_t3_y;
+    delete [] mu_ce_t1_z;
+    delete [] mu_ce_t2_z;
+    delete [] mu_ce_t3_z;
 
     // close files
     efile.close();
@@ -123,6 +164,7 @@ int IR2D::readParam( string _inpf_ )
         else if ( para.compare("t1t3_max")    == 0 )  t1t3_max     = stof(value);
         else if ( para.compare("t2")          == 0 )  t2           = stof(value);
         else if ( para.compare("lifetimet1")  == 0 )  lifetime_T1  = stof(value);
+        else if ( para.compare("anharm")      == 0 )  anharm       = stof(value);
         else if ( para.compare("nsamples")    == 0 )  nsamples     = stoi(value);
         else if ( para.compare("sample_every") == 0 ) sample_every = stof(value);
         else if ( para.compare("fftlen")      == 0 )  fftlen       = stoi(value);
@@ -142,6 +184,7 @@ int IR2D::readParam( string _inpf_ )
     tellParam<double>( "t1t3_max", t1t3_max );
     tellParam<double>( "t2", t2 );
     tellParam<double>( "lifetimeT1", lifetime_T1 );
+    tellParam<double>( "anharm", anharm);
     tellParam<int>( "nsamples", nsamples );
     tellParam<int>( "sample_every", sample_every );
     tellParam<int>( "fftlen", fftlen );
@@ -197,7 +240,7 @@ void IR2D::fileReadErr( string _fn_ )
 int IR2D::readEframe( int frame )
 // Read the energy file
 {
-    int     frameTmp, nelm, i, j;
+    int     frameTmp, nelm, i, j, inx;
     float   *Htmp;
     int64_t file_offset;
 
@@ -215,12 +258,18 @@ int IR2D::readEframe( int frame )
 
     // save the one-exciton Hamiltonian
     for( i = 0; i < n1ex; i ++ ){
+        inx = i*n1ex - i*(i+1)/2; // the indexing is a little unintuitive since 
+                                  // only the upper tridiagonal is given as input
     for( j = i; j < n1ex; j++ ){
-        H1[i*n1ex + j] = Htmp[i*n1ex + (j-i)];
+        H1[i*n1ex + j] = Htmp[inx  + j];
         H1[j*n1ex + i] = H1[i*n1ex + j];
     }
         H1[i*n1ex + i] -= shift; // subtract the frequency shift
     }
+
+    // build the 2-exciton hamiltonian
+    // do it here to avoid possible problems doing it later since H1 can change
+    if ( buildH2() != IR2DOK ) return 2;
 
     delete [] Htmp;
     return IR2DOK;
@@ -250,6 +299,9 @@ int IR2D::readDframe( int frame )
         mu_eg_z[ex] = dipoleTmp[ex+2*n1ex];
     }
 
+    // build the one-exciton to two-exciton transition dipole matrix
+    if ( build_ce_mu() != IR2DOK ) return 2;
+
     delete[] dipoleTmp;
     return IR2DOK;
 }
@@ -268,21 +320,133 @@ int IR2D::setMUatT( string which )
         memcpy( mu_eg_t1_x, mu_eg_x, sizeof(double)*n1ex );
         memcpy( mu_eg_t1_y, mu_eg_y, sizeof(double)*n1ex );
         memcpy( mu_eg_t1_z, mu_eg_z, sizeof(double)*n1ex );
+        memcpy( mu_ce_t1_x, mu_ce_x, sizeof(double)*n1ex*n2ex );
+        memcpy( mu_ce_t1_y, mu_ce_y, sizeof(double)*n1ex*n2ex );
+        memcpy( mu_ce_t1_z, mu_ce_z, sizeof(double)*n1ex*n2ex );
     }
     else if ( which.compare("t2") == 0 ){
         memcpy( mu_eg_t2_x, mu_eg_x, sizeof(double)*n1ex );
         memcpy( mu_eg_t2_y, mu_eg_y, sizeof(double)*n1ex );
         memcpy( mu_eg_t2_z, mu_eg_z, sizeof(double)*n1ex );
+        memcpy( mu_ce_t2_x, mu_ce_x, sizeof(double)*n1ex*n2ex );
+        memcpy( mu_ce_t2_y, mu_ce_y, sizeof(double)*n1ex*n2ex );
+        memcpy( mu_ce_t2_z, mu_ce_z, sizeof(double)*n1ex*n2ex );
     }
     else if ( which.compare("t3") == 0 ){
         memcpy( mu_eg_t3_x, mu_eg_x, sizeof(double)*n1ex );
         memcpy( mu_eg_t3_y, mu_eg_y, sizeof(double)*n1ex );
         memcpy( mu_eg_t3_z, mu_eg_z, sizeof(double)*n1ex );
+        memcpy( mu_ce_t3_x, mu_ce_x, sizeof(double)*n1ex*n2ex );
+        memcpy( mu_ce_t3_y, mu_ce_y, sizeof(double)*n1ex*n2ex );
+        memcpy( mu_ce_t3_z, mu_ce_z, sizeof(double)*n1ex*n2ex );
     }
 
     else{
         cout << "ERROR:: IR2D::setMUatT which= " << which << " is unknown." << endl;
         return 1;
+    }
+
+    return IR2DOK;
+}
+
+int IR2D::get2nx(int i,int j)
+// return index for 2-exciton states
+{
+    // since |i,j>=|j,i> have to be careful to not overcount
+    if ( i <=j ){
+        return n1ex*i - i*(i+1)/2 + j;
+    }
+    else{
+        return n1ex*j - j*(j+1)/2 + i;
+    }
+}
+
+int IR2D::buildH2()
+// build the two-exciton hamiltonian from the one-exciton hamiltonian
+{
+    int i, j, k, l;
+    int nx, mx;
+
+    // set to zero
+    for ( i = 0; i < n2ex*n2ex; i ++ ) H2[i] = 0.;
+
+    for ( i = 0; i < n1ex; i ++ ){
+        // diagonal energies for double excited states <i,i|H|i,i>
+        nx = get2nx( i, i ); // |i,i>
+        H2[ nx*n2ex + nx ] = 2*H1[ i*n1ex + i ] - anharm; // <i,i|H|i,i>
+    for ( j = i+1; j < n1ex; j ++ ){
+        // diagonal energies for states with two single excitations <i,j|H|i,j>
+        nx = get2nx( i, j ); // |i,j>
+        H2[ nx*n2ex + nx ] = H1[ i*n1ex + i ] + H1[ j*n1ex + j ]; // <i,j|H|i,j>
+    }
+    }
+
+    
+    // off diagonal couplings between single and double excited states <i,i|H|i,j>
+    // make harmonic approximation for the couplings --> gives sqrt(2) factor
+    // see Hamm and Zanni chapter 6.1
+    for ( i = 0; i < n1ex; i ++ ){
+        nx = get2nx(i,i);
+    for ( j = 0; j < n1ex; j ++ ){
+        mx = get2nx(i,j);
+        if ( nx == mx ) continue; // diagonal done above
+        H2[ nx*n2ex + mx ] = sqrt(2.0)*H1[ i*n1ex + j ];    // <i,i|H|i,j>
+        H2[ mx*n2ex + nx ] = H2[ nx*n2ex + mx ];            // c.c.
+    }
+    }
+        
+    
+    // off diagonal couplings between singly excited states <i,j|H|i,k>
+    for ( i = 0; i < n1ex; i ++ ){
+    for ( j = i+1; j < n1ex; j ++ ){
+        nx = get2nx(i,j);
+        for ( k = 0; k < n1ex; k ++ ){
+            if ( i == k ) continue; // double excited states done above
+            mx = get2nx(i,k);
+            if ( nx == mx ) continue; // diagonal done above
+            H2[ nx*n2ex + mx ] = H1[ j*n1ex + k ];      // <i,j|H|i,k>
+            H2[ mx*n2ex + nx ] = H2[ nx*n2ex + mx ];    // c.c.
+        }
+        for ( k = 0; k < n1ex; k ++ ){
+            if ( j == k ) continue; // double excited states done above
+            mx = get2nx(j,k);
+            if ( nx == mx ) continue; // diagonal done above
+            H2[ nx*n2ex + mx ] = H1[ i*n1ex + k ];      // <i,j|H|k,j>
+            H2[ mx*n2ex + nx ] = H2[ nx*n2ex + mx ];    // c.c.
+    }
+    }
+    }
+
+    return IR2DOK;
+}
+
+int IR2D::build_ce_mu()
+// build the two-exciton to one-exciton transition dipole moment
+{
+    int i, j, k, nx, mx;
+
+    // zero
+    for ( i = 0; i < n1ex*n2ex; i ++ ){
+        mu_ce_x[ i ] = 0.;
+        mu_ce_y[ i ] = 0.;
+        mu_ce_z[ i ] = 0.;
+    }
+
+    // use harmonic rules to build transition dipole moment matrix
+    // this is where the sqrt(2) factor comes from
+    for ( i = 0; i < n1ex; i ++ ){
+        nx = i;
+        mx = get2nx(i,i);
+        mu_ce_x[nx*n2ex + mx] = sqrt(2.0)*mu_eg_x[ nx ]; // <i|u|i,i>
+        mu_ce_y[nx*n2ex + mx] = sqrt(2.0)*mu_eg_y[ nx ]; // <i|u|i,i>
+        mu_ce_z[nx*n2ex + mx] = sqrt(2.0)*mu_eg_z[ nx ]; // <i|u|i,i>
+    for ( j = 0; j < n1ex; j ++ ){
+        if ( j == i ) continue; // did single to double excitations above
+        mx = get2nx(i,j);
+        mu_ce_x[nx*n2ex + mx] = mu_eg_x[ nx ]; // <i|u|i,j>
+        mu_ce_y[nx*n2ex + mx] = mu_eg_y[ nx ]; // <i|u|i,j>
+        mu_ce_z[nx*n2ex + mx] = mu_eg_z[ nx ]; // <i|u|i,j>
+    }
     }
 
     return IR2DOK;
@@ -304,10 +468,10 @@ int IR2D::propigateH1( int t0, int t1, string which )
     if ( which.compare("t0-t1") == 0 ){
         // do the integration
         if ( t1 == t0 ){
+            // first zero all elements
+            for (i = 0; i < n1ex*n1ex; i ++ ) eiH1_t0t1[i] = complex_zero;
             // at t1==t0, the integral is 0, so e^0 is Identity matrix
-            for (i = 0; i < n1ex; i ++ ){
-                eiH1_t0t1[i*n1ex +i] = complex_one;
-            }
+            for (i = 0; i < n1ex; i ++ ) eiH1_t0t1[i*n1ex +i] = complex_one;
         }
         else{
             // integrate with the trapezoid rule using the last and current
@@ -324,10 +488,10 @@ int IR2D::propigateH1( int t0, int t1, string which )
     else if ( which.compare("t1-t2") == 0 ){
         // do the integration
         if ( t1 == t0 ){
+            // first zero all elements
+            for (i = 0; i < n1ex*n1ex; i ++ ) eiH1_t1t2[i] = complex_zero;
             // at t1==t0, the integral is 0, so e^0 is Identity matrix
-            for (i = 0; i < n1ex; i ++ ){
-                eiH1_t1t2[i*n1ex +i] = complex_one;
-            }
+            for (i = 0; i < n1ex; i ++ ) eiH1_t1t2[i*n1ex +i] = complex_one;
         }
         else{
             // integrate with the trapezoid rule using the last and current
@@ -344,10 +508,10 @@ int IR2D::propigateH1( int t0, int t1, string which )
     else if ( which.compare("t2-t3") == 0 ){
         // do the integration
         if ( t1 == t0 ){
+            // first zero all elements
+            for (i = 0; i < n1ex*n1ex; i ++ ) eiH1_t2t3[i] = complex_zero;
             // at t1==t0, the integral is 0, so e^0 is Identity matrix
-            for (i = 0; i < n1ex; i ++ ){
-                eiH1_t2t3[i*n1ex +i] = complex_one;
-            }
+            for (i = 0; i < n1ex; i ++ ) eiH1_t2t3[i*n1ex +i] = complex_one;
         }
         else{
             // integrate with the trapezoid rule using the last and current
@@ -367,6 +531,69 @@ int IR2D::propigateH1( int t0, int t1, string which )
     }
 
     delete [] eiH1;
+    delete [] tmp;
+    return IR2DOK;
+}
+
+int IR2D::propigateH2( int t0, int t1, string which )
+// integrate the 2-exciton Hamiltonian
+{
+    int i;
+    complex<double> *eiH2, *tmp;
+    
+    eiH2 = new complex<double>[n2ex*n2ex];
+    tmp  = new complex<double>[n2ex*n2ex];
+    
+    // deterimine e^-iH1dt/(2*Hbar), return to eiH1
+    doeiH( eiH2, H2, n2ex );
+
+    // do the integration
+    if ( which.compare("t1-t2") == 0 ){
+        // do the integration
+        if ( t1 == t0 ){
+            // first zero all elements
+            for (i = 0; i < n2ex*n2ex; i ++ ) eiH2_t1t2[i] = complex_zero;
+            // at t1==t0, the integral is 0, so e^0 is Identity matrix
+            for (i = 0; i < n2ex; i ++ ) eiH2_t1t2[i*n2ex +i] = complex_one;
+        }
+        else{
+            // integrate with the trapezoid rule using the last and current
+            // exponentiated hamiltonians
+            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                         n2ex, n2ex, n2ex, &complex_one, eiH2_t1t2, n2ex, \
+                         eiH2_t2_last, n2ex, &complex_zero, tmp, n2ex );
+            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                         n2ex, n2ex, n2ex, &complex_one, tmp, n2ex, \
+                         eiH2, n2ex, &complex_zero, eiH2_t1t2, n2ex );
+        }
+        memcpy( eiH2_t2_last, eiH2, sizeof(complex<double>)*n2ex*n2ex );
+    }
+    else if ( which.compare("t2-t3") == 0 ){
+        // do the integration
+        if ( t1 == t0 ){
+            // first zero all elements
+            for (i = 0; i < n2ex*n2ex; i ++ ) eiH2_t2t3[i] = complex_zero;
+            // at t1==t0, the integral is 0, so e^0 is Identity matrix
+            for (i = 0; i < n2ex; i ++ ) eiH2_t2t3[i*n2ex +i] = complex_one;
+        }
+        else{
+            // integrate with the trapezoid rule using the last and current
+            // exponentiated hamiltonians
+            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                         n2ex, n2ex, n2ex, &complex_one, eiH2_t2t3, n2ex, \
+                         eiH2_t3_last, n2ex, &complex_zero, tmp, n2ex );
+            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                         n2ex, n2ex, n2ex, &complex_one, tmp, n2ex, \
+                         eiH2, n2ex, &complex_zero, eiH2_t2t3, n2ex );
+        }
+        memcpy( eiH2_t3_last, eiH2, sizeof(complex<double>)*n2ex*n2ex );
+    }
+    else{
+        cout << "ERROR:: IR2D::propigateH2 which= " << which << \
+                " is unknown." << endl; return 1;
+    }
+
+    delete [] eiH2;
     delete [] tmp;
     return IR2DOK;
 }
@@ -420,7 +647,7 @@ int IR2D::doeiH( complex<double> *eiH, double *H, int N )
 }
 
 complex<double> IR2D::getR1D()
-// return the linear response function at a given t1
+// return the linear response function
 {
     int i;
     complex<double> *mu0, *mu1, *tmp;
@@ -466,81 +693,111 @@ complex<double> IR2D::getR1D()
     return R1D;
 }
 
-complex<double> IR2D::getR2D( int t1, int t3, string which )
-// return the third order response function at a given t1, t3
-// See Eq 7.35 from Hamm and Zanni
+complex<double> IR2D::getR2D_R1()
+// return the third order rephasing response function
 {
-    double mu;
-    complex<double> R2D;
-    vec3   polx={1.,0.,0.}, poly={0.,1.,0.}, polz={0.,0.,1.};
-    double lifetime_T2_12 = 2.*lifetime_T1/3.;// See Hamm and Zanni eq 4.21
-    lifetime_T2_12 = lifetime_T2;             // set equal here, see Jansen 2012 
+    complex<double> *mu0_eg, *mu1_eg, *mu2_eg, *mu3_eg, *tmp_e;
+    complex<double> *mu1_ce, *mu2_ce, *mu3_ce, *tmp_c;
+    complex<double> R2D, res1, res2;
+    int i;
+
+    mu0_eg = new complex<double>[n1ex];
+    mu1_eg = new complex<double>[n1ex];
+    mu2_eg = new complex<double>[n1ex];
+    mu3_eg = new complex<double>[n1ex];
+    mu0_ce = new complex<double>[n1ex*n2ex];
+    mu1_ce = new complex<double>[n1ex*n2ex];
+    mu2_ce = new complex<double>[n1ex*n2ex];
+    mu3_ce = new complex<double>[n1ex*n2ex];
+    tmp_e = new complex<double>[n1ex];
+    tmp_c = new complex<double>[n2ex];
+
+    R2D = complex_zero;
+
+    // TODO: this needs to be redone!
+    // rephasing -- R2(3) (eq 24 of notes)
+    // #########################################################
+    
+    // get the isotropically averaged spectrum -- x component
+    for ( i = 0; i < n1ex; i ++ ) mu0_eg[i] = mu_eg_t0_x[i];
+    for ( i = 0; i < n1ex; i ++ ) mu1_eg[i] = mu_eg_t1_x[i];
+    for ( i = 0; i < n1ex; i ++ ) mu2_eg[i] = mu_eg_t2_x[i];
+    for ( i = 0; i < n1ex; i ++ ) mu3_eg[i] = mu_eg_t3_x[i];
+    for ( i = 0; i < n1ex*n2ex; i ++ ) mu1_ce[i] = mu_ce_t1_x[i];
+    for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_x[i];
+    for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_x[i];
+    // TODO:: THESE ARE GETTING OVERWRITTEN AND IT MAY BE BREAKING SOMETHING!
+
+    // one-exciton part
+    // t1-t3
+    // A = H1_t2t3*M(t1)
+    cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                 &complex_one, eiH1_t2t3, n1ex, mu1_eg, 1, \
+                 &complex_zero, tmp_e, 1 );
+    // A = H1_t1t2*A
+    cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                 &complex_one, eiH1_t1t2, n1ex, tmp_e, 1, \
+                 &complex_zero, mu1_eg, 1 );
+
+    // t0-t2 -- here we need the conjugate
+    // since H is symmetric e^(iHt) is also symmetric, so taking the 
+    // conjugate transpose is same as taking only transpose
+    // B = H1_t1t2*M(t2)
+    cblas_zgemv( CblasRowMajor, CblasConjTrans, n1ex, n1ex,\
+                 &complex_one, eiH1_t1t2, n1ex, mu2_eg, 1, \
+                 &complex_zero, tmp_e, 1 );
+    // B = H1_t0t1*B
+    cblas_zgemv( CblasRowMajor, CblasConjTrans, n1ex, n1ex,\
+                 &complex_one, eiH1_t0t1, n1ex, tmp_e, 1, \
+                 &complex_zero, mu2_eg, 1 );
+
+    // one exciton part
+    cblas_zdotu_sub( n1ex, mu3_eg, 1, mu1_eg, 1, &res1 ); // M(t3)*A
+    cblas_zdotu_sub( n1ex, mu0_eg, 1, mu2_eg, 1, &res2 ); // M(t0)*B
+    R2D += res1*res2
+    
+    // two-exciton part
+    // C = M(t3)*A
+    cblas_zgemv( CblasRowMajor, CblasTrans, n2ex, n1ex,\
+                 &complex_one, mu3_ce, n1ex, mu1_eg, 1, \
+                 &complex_zero, tmp_c, 1 );
+    // D = H2_t2t3*C
+
+
+    cblas_zgemv( CblasRowMajor, CblasConjTrans, n2ex, n2ex,\
+                 &complex_one, eiH2_t2t3, n2ex, tmp_c, 1, \
+                 &complex_zero, mu2_c, 1 );
+    
+
+
+
+
+
+
+    // #########################################################
 
     /*
-    R2D = complex_zero;
-    // get dipole part for isotropically averaged ZZZZ spectrum
-    // NOTE: The Condon approximation is NOT made here
-    // all four pulses have the same polarization 
-    // see Hamm and Zanni eq 5.35
-    mu = 0;
-    mu+=dot3(dipole_t0,polx)*dot3(dipole_t1,polx)*
-        dot3(dipole_t2,polx)*dot3(dipole_t3,polx);
-    mu+=dot3(dipole_t0,poly)*dot3(dipole_t1,poly)*
-        dot3(dipole_t2,poly)*dot3(dipole_t3,poly);
-    mu+=dot3(dipole_t0,polz)*dot3(dipole_t1,polz)*
-        dot3(dipole_t2,polz)*dot3(dipole_t3,polz);
+    // rephasing -- R3(3) (eq 25 of notes)
+    // get the isotropically averaged spectrum -- x component
+    for ( i = 0; i < n1ex; i ++ ) mu0[i] = mu_eg_t0_x[i];
+    for ( i = 0; i < n1ex; i ++ ) mu1[i] = mu_eg_t1_x[i];
+    for ( i = 0; i < n1ex; i ++ ) mu2[i] = mu_eg_t2_x[i];
+    for ( i = 0; i < n1ex; i ++ ) mu3[i] = mu_eg_t3_x[i];
 
-    // get the response function
-    if ( which.compare("R1") == 0 ){ // rephasing
-        // dipole
-        // first pulse oscillating in 01 coherence
-        // second pulse population relaxation (note t2 is in ps already)
-        // third pulse oscillating in 01 coherence
-        R2D += img*mu* 
-               conj(eint_t1)*exp(-t1*dt/lifetime_T2)
-                            *exp(-t2   /lifetime_T1)
-                   *eint_t3 *exp(-t3*dt/lifetime_T2);
-    }
-    else if ( which.compare("R4") == 0 ){ // non-rephasing
-        // dipole
-        // first pulse oscillating in 01 coherence
-        // second pulse population relaxation (note t2 is in ps already)
-        // third pulse oscillating in 01 coherence
-        R2D += img*mu* 
-               eint_t1*exp(-t1*dt/lifetime_T2)
-                      *exp(-t2   /lifetime_T1)
-              *eint_t3*exp(-t3*dt/lifetime_T2);
-    }
-    else if ( which.compare("R3") == 0 ){ // rephasing
-        // dipole, the factor of 2 assumes the transition dipoles scale 
-        // like a harmonic oscillator (see p 68 of Hamm and Zanni)
-        // first pulse oscillating in 01 coherence
-        // second pulse population relaxation (note t2 is in ps already)
-        // third pulse oscillating in 12 coherence -- see eq 4.21 for relaxation
-        // include anharmonicity term for the 12 transition
-        R2D -= 2.*img*mu*
-               conj(eint_t1)*exp(-t1*dt/lifetime_T2)
-                            *exp(-t2   /lifetime_T1)
-                   *eint_t3 *exp(-t3*dt/lifetime_T2_12)
-                   *exp(img*(dt*t3)*anharm/HBAR);              
-    }
-    else if ( which.compare("R6") == 0 ){ // non-rephasing
-        // dipole, the factor of 2 assumes the transition dipoles scale 
-        // like a harmonic oscillator (see p 68 of Hamm and Zanni)
-        // first pulse oscillating in 01 coherence
-        // second pulse population relaxation (note t2 is in ps already)
-        // third pulse oscillating in 12 coherence -- see eq 4.21 for relaxation
-        // include anharmonicity term for the 12 transition
-        R2D -= 2.*img*mu*
-               eint_t1*exp(-t1*dt/lifetime_T2)
-                      *exp(-t2   /lifetime_T1)
-              *eint_t3*exp(-t3*dt/lifetime_T2_12)
-              *exp(img*(dt*t3)*anharm/HBAR);
-    }
-    else {
-        cout << "ERROR:: IR2D::getR2D which= " << which << " is unknown. Aborting." << endl;
-        exit(EXIT_FAILURE);
-    }
+    // t2-t3
+    cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                 &complex_one, eiH1_t2t3, n1ex, mu2, 1, \
+                 &complex_zero, tmp, 1 );
+    cblas_zdotu_sub( n1ex, mu3, 1, tmp, 1, &res1 );
+    
+    // t0-t1 -- here we need the conjugate
+    // since H is symmetric e^(iHt) is also symmetric, so taking the 
+    // conjugate transpose is same as taking only transpose
+    cblas_zgemv( CblasRowMajor, CblasConjTrans, n1ex, n1ex,\
+                 &complex_one, eiH1_t0t1, n1ex, mu1, 1, \
+                 &complex_zero, tmp, 1 );
+    cblas_zdotu_sub( n1ex, mu0, 1, tmp, 1, &res2 );
+    R2D += res1*res2;
     */
 
     return R2D;
@@ -892,9 +1149,6 @@ int main( int argc, char* argv[] )
     // get input file name and initialize IR2D class
     IR2D spectrum( argv[1] ); 
 
-    // set t2 waiting time in units of frames
-    it2_max = static_cast<int>(spectrum.t2/spectrum.dt);
-
     // Loop over the trajectory
     for ( sample = 0; sample < spectrum.nsamples; sample ++ ){
 
@@ -902,46 +1156,52 @@ int main( int argc, char* argv[] )
         it0 = sample*static_cast<int>(spectrum.sample_every/spectrum.dt);
         fprintf(stderr, "    Now processing sample %d/%d starting at %.2f ps\n", \
                 sample+1, spectrum.nsamples, it0*spectrum.dt ); fflush(stderr);
-        if ( spectrum.readDframe( it0 ) != IR2DOK ) exit(EXIT_FAILURE);
-        if ( spectrum.setMUatT( "t0" )  != IR2DOK ) exit(EXIT_FAILURE);
+        if ( spectrum.readDframe(it0) != IR2DOK ) exit(EXIT_FAILURE);
+        if ( spectrum.setMUatT("t0")  != IR2DOK ) exit(EXIT_FAILURE);
 
         // loop over t1
         it1_max = it0 + spectrum.t1t3_npoints;
         for ( it1 = it0; it1 < it1_max; it1 ++ ){
 
-            // read in energy and dipole
+            // read in energy and dipole and propigate one-exciton hamiltonian
             if ( spectrum.readEframe(it1) != IR2DOK ) exit(EXIT_FAILURE);
-            if ( spectrum.propigateH1( it0, it1, "t0-t1" ) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.propigateH1(it0, it1, "t0-t1") != IR2DOK ) exit(EXIT_FAILURE);
+            continue;
             if ( spectrum.readDframe(it1) != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.setMUatT("t1")  != IR2DOK ) exit(EXIT_FAILURE);
 
             // get exponential integral and 1D response function
             spectrum.R1D[it1-it0] += spectrum.getR1D();
 
-            // get frame number and dipole for time t2
-            /*
-            frame_t2 = frame_t1 + it2;
+            // loop over t2 and get exponential integral
+            it2_max = it1 + static_cast<int>(spectrum.t2/spectrum.dt);
+            for ( it2 = it1; it2 < it2_max; it2 ++ ){
+                // read in energy and propigate one- and two-exciton hamiltonians
+                if ( spectrum.readEframe(it2) != IR2DOK ) exit(EXIT_FAILURE);
+                if ( spectrum.propigateH1( it1, it2, "t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);
+                if ( spectrum.propigateH2( it1, it2, "t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);
+            }
+            // read in dipole at t2_max
             if ( spectrum.readDframe(it2) != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.setMUatT("t2")  != IR2DOK ) exit(EXIT_FAILURE);
-            */
 
 
-            // loop over t3 at current t1
-            /*
-            for ( it3 = 0; it3 < spectrum.t1t3_npoints; it3 ++ ){
-                // get frame number for current t3
-                frame_t3 = frame_t2 + it3;
+            // loop over t3
+            it3_max = it2_max + spectrum.t1t3_npoints;
+            for ( it3 = it2_max; it3 < it3_max; it3 ++ ){
+                // read in energy and dipole and propigate one- and two-exciton hamiltonian
+                if ( spectrum.readEframe(it3) != IR2DOK ) exit(EXIT_FAILURE);
+                if ( spectrum.propigateH1( it2, it3, "t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);
+                if ( spectrum.propigateH2( it1, it2, "t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);
+                if ( spectrum.readDframe(it3) != IR2DOK ) exit(EXIT_FAILURE);
+                if ( spectrum.setMUatT("t3")  != IR2DOK ) exit(EXIT_FAILURE);
 
-                // read in energy and dipole
-                if ( spectrum.readEframe(frame_t3, "t3") != IR2DOK ) exit(EXIT_FAILURE);
-                if ( spectrum.readDframe(frame_t3, "t3") != IR2DOK ) exit(EXIT_FAILURE); 
-
-                // get exponential integral and 2D response function 
-                if ( spectrum.get_eint(t3, "t3") != IR2DOK ) exit(EXIT_FAILURE);
-                spectrum.R2D_R1[ it1 * spectrum.t1t3_npoints + it3 ] += spectrum.getR2D(it1, it3, "R1" );
-                spectrum.R2D_R2[ it1 * spectrum.t1t3_npoints + it3 ] += spectrum.getR2D(it1, it3, "R2" );
+                
+                // get 2D response function 
+                //spectrum.R2D_R1[ it1 * spectrum.t1t3_npoints + it3 ] += spectrum.getR2D_R1();
+                //spectrum.R2D_R2[ it1 * spectrum.t1t3_npoints + it3 ] += spectrum.getR2D_R2();
+            
             }
-            */
             printProgress( it1-it0+1, spectrum.t1t3_npoints );
         }
         cerr << endl;

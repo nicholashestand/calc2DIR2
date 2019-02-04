@@ -36,6 +36,7 @@ class IR2D
         int    trjlen=0;                // number of frames in trajectory files
         int    fftlen=4096;             // number of data points for 1 dimension of fft
         int    t1t3_npoints;            // number of data points for t1 and t3 dimensions
+        double anharm=0.;               // anharmonicity in cm-1
         double window0 = 1400;          // lower limit of spectral window in cm-1
         double window1 = 1700;          // upper limit if spectral window in cm-1
         double shift;                   // reference frequency in cm-1
@@ -45,9 +46,9 @@ class IR2D
         complex<double> *eiH1_t0t1;     // one-exciton hamiltonian integrated from time t0 to t1
         complex<double> *eiH1_t1t2;     // one-exciton hamiltonian integrated from time t1 to t2
         complex<double> *eiH1_t2t3;     // one-exciton hamiltonian integrated from time t2 to t3
-        complex<double> *eiH1_t1_last;  // one-exciton hamiltonian at previous timestep
-        complex<double> *eiH1_t2_last;  // one-exciton hamiltonian at previous timestep
-        complex<double> *eiH1_t3_last;  // one-exciton hamiltonian at previous timestep
+        complex<double> *eiH1_t1_last;  // one-exciton hamiltonian at previous t1
+        complex<double> *eiH1_t2_last;  // one-exciton hamiltonian at previous t2
+        complex<double> *eiH1_t3_last;  // one-exciton hamiltonian at previous t3
         double *mu_eg_x;                // ground-to-one-exciton dipole vector
         double *mu_eg_y;                // ground-to-one-exciton dipole vector
         double *mu_eg_z;                // ground-to-one-exciton dipole vector
@@ -63,7 +64,24 @@ class IR2D
         double *mu_eg_t1_z;             // ground-to-one-exciton dipole vector at t1 - z component
         double *mu_eg_t2_z;             // ground-to-one-exciton dipole vector at t2 - z component
         double *mu_eg_t3_z;             // ground-to-one-exciton dipole vector at t3 - z component
-
+        double *H2;                     // two-exciton hamiltonian at current t
+        complex<double> *eiH2_t1t2;     // two-exciton hamiltonian integrated from time t1 to t2
+        complex<double> *eiH2_t2t3;     // two-exciton hamiltonian integrated from time t2 to t3
+        complex<double> *eiH2_t2_last;  // two-exciton hamiltonian at previous t2
+        complex<double> *eiH2_t3_last;  // two-exciton hamiltonian at previous t2
+        double *mu_ce_x;                // ground-to-one-exciton dipole vector
+        double *mu_ce_y;                // ground-to-one-exciton dipole vector
+        double *mu_ce_z;                // ground-to-one-exciton dipole vector
+        double *mu_ce_t1_x;             // one-to-two-exciton dipole vector at t1 - x component
+        double *mu_ce_t2_x;             // one-to-two-exciton dipole vector at t2 - x component
+        double *mu_ce_t3_x;             // one-to-two-exciton dipole vector at t3 - x component
+        double *mu_ce_t1_y;             // one-to-two-exciton dipole vector at t1 - y component
+        double *mu_ce_t2_y;             // one-to-two-exciton dipole vector at t2 - y component
+        double *mu_ce_t3_y;             // one-to-two-exciton dipole vector at t3 - y component
+        double *mu_ce_t1_z;             // one-to-two-exciton dipole vector at t1 - z component
+        double *mu_ce_t2_z;             // one-to-two-exciton dipole vector at t2 - z component
+        double *mu_ce_t3_z;             // one-to-two-exciton dipole vector at t3 - z component
+        
         // complex constants
         const complex<double> img          = {0.,1.};   
         const complex<double> complex_one  = {1.,0.};   
@@ -83,9 +101,13 @@ class IR2D
         void fileReadErr( string _fn_ );
         int  readParam( string _inpf_ );
         int  readEframe( int frame );
+        int  buildH2();
+        int  build_ce_mu();
+        int  get2nx( int i, int j );
         int  readDframe( int frame );
         int  setMUatT( string which );
         int  propigateH1( int t0, int t1, string which );
+        int  propigateH2( int t0, int t1, string which );
         int  doeiH( complex<double> *eiH1, double *H1, int n1ex );
         int  writeR1D();
         int  writeR2D();
@@ -94,8 +116,8 @@ class IR2D
         int  write2Dout( complex<double> *data, string fn, string which, int n);
         double dot3( vec3 a, vec3 b );
         template<class T> void tellParam( string param, T value );
-        complex<double> getR1D( );
-        complex<double> getR2D( int t1, int t2, string which );
-        
+        complex<double> getR1D();
+        complex<double> getR2D_R1();
+        complex<double> getR2D_R2();
 };
 #endif
