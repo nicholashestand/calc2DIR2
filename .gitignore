@@ -2,3 +2,10 @@
 *.bin
 *.dat
 *.o
+*.txt
+*.bbl
+*.blg
+*.aux
+*.swp
+*.log
+*.backup
