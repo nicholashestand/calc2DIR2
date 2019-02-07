@@ -1222,7 +1222,6 @@ int IR2D::write2DRabs()
                              FFTW_BACKWARD, FFTW_ESTIMATE );
     
     // fourier transform rephasing response functions, see Hamm and Zanni eq 4.31
-    // see Hamm and Zanni eq 4.23 and note R1=R2, hence the factor of 2
     for ( i = 0; i < fftlen*fftlen; i ++ ) fftIn[i] = complex_zero;
     for ( it1 = 0; it1 < t1t3_npoints; it1 ++ ){
         for ( it3 = 0; it3 < t1t3_npoints; it3 ++ ){
@@ -1245,7 +1244,6 @@ int IR2D::write2DRabs()
     }
 
     // fourier transform non-rephasing response functions, see Hamm and Zanni eq 4.31
-    // see Hamm and Zanni eq 4.23 and note R4=R5, hence the factor of 2
     for ( i = 0; i < fftlen*fftlen; i ++ ) fftIn[i] = complex_zero;
     for ( it1 = 0; it1 < t1t3_npoints; it1 ++ ){
         for ( it3 = 0; it3 < t1t3_npoints; it3 ++ ){
@@ -1388,6 +1386,24 @@ int main( int argc, char* argv[] )
     // get input file name and initialize IR2D class
     IR2D spectrum( argv[1] ); 
 
+    /* TODO:
+     * This program could be made much more efficient with a slight rewrite
+     * that follows these steps
+     * 1). For a given sample, set the frame where it2=0 as a reference frame, 
+     *     instead of where it0=0
+     * 2). H1 and H2 will then only need to be propigated once during the waiting
+     *     time and not for every new it1, ie the t1-t2 integrals
+     * 3). the t0-t1 integral can then be propigated only once, but it will need
+     *     to be saved at each time step. An alternative is to do the matrix
+     *     multiplication with the dipole, so only an n1ex x 1 array needs to be saved
+     *     instead of a n1ex x n1ex matrix. This may be a little tricky, but I think
+     *     it will work
+     * 4). finally, the same can be done with the t2-t3 integrals
+     * 5). the response functions can then be calculated
+     * This may lead to a little less intuitive program, but I expect a speedup on the
+     * order of t1max, which could be about 250-1000, depending on t1max.
+     */
+
     // Loop over the trajectory
     for ( sample = 0; sample < spectrum.nsamples; sample ++ ){
 
@@ -1486,4 +1502,4 @@ int main( int argc, char* argv[] )
     if ( spectrum.write1Dfft()  != IR2DOK ) exit(EXIT_FAILURE);
     if ( spectrum.write2DRabs() != IR2DOK ) exit(EXIT_FAILURE);
     cout << ">>> Done!" << endl;
-
+}
