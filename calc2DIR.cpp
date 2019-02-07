@@ -416,55 +416,36 @@ int IR2D::buildH2()
     }
     }
 
-    /*
-    for ( i = 0; i < n2ex; i ++ ){
-    for ( j = 0; j < n2ex; j ++ ){
-        cout << setw(8) << setprecision(4) << H2[i*n2ex + j] << " ";
-    }
-    cout << endl;
-    }
-    */
-
     return IR2DOK;
 }
 
 int IR2D::build_ce_mu()
 // build the two-exciton to one-exciton transition dipole moment
 {
-    int i, j, k, nx, mx;
+    int i, j, k, mx;
 
     // zero
     for ( i = 0; i < n1ex*n2ex; i ++ ){
-        mu_ce_x[ i ] = 0.;
-        mu_ce_y[ i ] = 0.;
-        mu_ce_z[ i ] = 0.;
+        mu_ce_x[i] = 0.;
+        mu_ce_y[i] = 0.;
+        mu_ce_z[i] = 0.;
     }
 
     // use harmonic rules to build transition dipole moment matrix
     // this is where the sqrt(2) factor comes from
     for ( i = 0; i < n1ex; i ++ ){
-        nx = i;
         mx = get2nx(i,i);
-        mu_ce_x[nx*n2ex + mx] = sqrt(2.0)*mu_eg_x[ nx ]; // <i|u|i,i>
-        mu_ce_y[nx*n2ex + mx] = sqrt(2.0)*mu_eg_y[ nx ]; // <i|u|i,i>
-        mu_ce_z[nx*n2ex + mx] = sqrt(2.0)*mu_eg_z[ nx ]; // <i|u|i,i>
+        mu_ce_x[i*n2ex + mx] = sqrt(2.0)*mu_eg_x[i]; // <i|u|i,i>
+        mu_ce_y[i*n2ex + mx] = sqrt(2.0)*mu_eg_y[i]; // <i|u|i,i>
+        mu_ce_z[i*n2ex + mx] = sqrt(2.0)*mu_eg_z[i]; // <i|u|i,i>
     for ( j = 0; j < n1ex; j ++ ){
         if ( j == i ) continue; // did single to double excitations above
         mx = get2nx(i,j);
-        mu_ce_x[nx*n2ex + mx] = mu_eg_x[ nx ]; // <i|u|i,j>
-        mu_ce_y[nx*n2ex + mx] = mu_eg_y[ nx ]; // <i|u|i,j>
-        mu_ce_z[nx*n2ex + mx] = mu_eg_z[ nx ]; // <i|u|i,j>
+        mu_ce_x[i*n2ex + mx] = mu_eg_x[j]; // <i|u|i,j>
+        mu_ce_y[i*n2ex + mx] = mu_eg_y[j]; // <i|u|i,j>
+        mu_ce_z[i*n2ex + mx] = mu_eg_z[j]; // <i|u|i,j>
     }
     }
-
-    /*
-    for ( i = 0; i < n1ex; i ++ ){
-    for ( j = 0; j < n2ex; j ++ ){
-        cout << setw(8) << setprecision(4) << mu_ce_x[ i*n2ex + j ] << " ";
-    }
-        cout << endl;
-    }
-    */
 
     return IR2DOK;
 }
@@ -870,6 +851,7 @@ complex<double> IR2D::getR2D_R1()
         cblas_zgemv( CblasRowMajor, CblasTrans, n2ex, n2ex,\
                      &complex_one, eiH2_t2t3, n2ex, work2b, 1, \
                      &complex_zero, work2c, 1 );
+
         // work0a=work2c*work2a
         cblas_zdotu_sub( n2ex, work2c, 1, work2a, 1, &work0a );
         R2D    -= work0a;
