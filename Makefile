@@ -2,7 +2,7 @@ src     = calc2DIR.cpp
 exes    = calc2DIR.exe
 CC      = g++
 LIBDIR  = -L/${MKLROOT}/lib/intel64
-LIBS    = -Wl,--no-as-needed -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -lfftw3
+LIBS    = -Wl,--no-as-needed -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -lfftw3 -fopenmp
 
 all: ${exes}
 

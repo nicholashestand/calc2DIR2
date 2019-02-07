@@ -11,6 +11,8 @@
 #include "calc2DIR.h"
 #define MKL_Complex16 complex<double>
 #include <mkl.h>
+#include <omp.h>
+#include <pthread.h>
 
 using namespace std;
 
@@ -1414,8 +1416,12 @@ int main( int argc, char* argv[] )
             for ( it2 = it1; it2 <= it2_max; it2 ++ ){
                 // read in energy and propigate one- and two-exciton hamiltonians
                 if ( spectrum.readEframe(it2) != IR2DOK ) exit(EXIT_FAILURE);
-                if ( spectrum.propigateH1( it1, it2, "t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);
-                if ( spectrum.propigateH2( it1, it2, "t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);
+                #pragma omp parallel num_threads(2)
+                {
+                    int id = omp_get_thread_num();
+                    if ( id == 0 ){ if ( spectrum.propigateH1( it1, it2, "t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);}
+                    if ( id == 1 ){ if ( spectrum.propigateH2( it1, it2, "t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);}
+                }
             }
             // read in dipole at t2_max
             if ( spectrum.readDframe(it2_max) != IR2DOK ) exit(EXIT_FAILURE);
@@ -1426,15 +1432,24 @@ int main( int argc, char* argv[] )
             for ( it3 = it2_max; it3 <= it3_max; it3 ++ ){
                 // read in energy and dipole and propigate one- and two-exciton hamiltonian
                 if ( spectrum.readEframe(it3) != IR2DOK ) exit(EXIT_FAILURE);
-                if ( spectrum.propigateH1( it2_max, it3, "t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);
-                if ( spectrum.propigateH2( it2_max, it3, "t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);
+                #pragma omp parallel num_threads(2)
+                {
+                    int id = omp_get_thread_num();
+                    if ( id == 0 ){ if ( spectrum.propigateH1( it2_max, it3, "t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);}
+                    if ( id == 1 ){ if ( spectrum.propigateH2( it2_max, it3, "t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);}
+                }
                 if ( spectrum.readDframe(it3) != IR2DOK ) exit(EXIT_FAILURE);
                 if ( spectrum.setMUatT("t3")  != IR2DOK ) exit(EXIT_FAILURE);
 
                 // get 2D response function 
                 ndx = (it1-it0)*spectrum.t1t3_npoints + it3 - it2_max;
-                spectrum.R2D_R1[ndx] += spectrum.getR2D_R1();
-                spectrum.R2D_R2[ndx] += spectrum.getR2D_R2();
+                
+                #pragma omp parallel num_threads(2)
+                {
+                    int id = omp_get_thread_num();
+                    if ( id == 0 ) spectrum.R2D_R1[ndx] += spectrum.getR2D_R1();
+                    if ( id == 1 ) spectrum.R2D_R2[ndx] += spectrum.getR2D_R2();
+                }
             }
             printProgress( it1-it0+1, spectrum.t1t3_npoints );
         }
@@ -1471,4 +1486,4 @@ int main( int argc, char* argv[] )
     if ( spectrum.write1Dfft()  != IR2DOK ) exit(EXIT_FAILURE);
     if ( spectrum.write2DRabs() != IR2DOK ) exit(EXIT_FAILURE);
     cout << ">>> Done!" << endl;
-}
+
