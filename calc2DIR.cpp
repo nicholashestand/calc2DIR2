@@ -52,6 +52,11 @@ IR2D::IR2D( string _inpf_ )
     mu_eg_t1_z      = new double[n1ex]();
     mu_eg_t2_z      = new double[n1ex]();
     mu_eg_t3_z      = new double[n1ex]();
+
+    eiH1_mu_eg_t0_x = new complex<double>[n1ex*t1t3_npoints]();
+    eiH1_mu_eg_t0_y = new complex<double>[n1ex*t1t3_npoints]();
+    eiH1_mu_eg_t0_z = new complex<double>[n1ex*t1t3_npoints]();
+
     // two exciton
     H2              = new double [n2ex*n2ex]();
     eiH2_t1t2       = new complex<double>[n2ex*n2ex]();
@@ -109,6 +114,9 @@ IR2D::~IR2D()
     delete [] mu_eg_t1_z;
     delete [] mu_eg_t2_z;
     delete [] mu_eg_t3_z;
+    delete [] eiH1_mu_eg_t0_x;
+    delete [] eiH1_mu_eg_t0_y;
+    delete [] eiH1_mu_eg_t0_z;
     // two-exciton
     delete [] H2;
     delete [] eiH2_t1t2;
@@ -207,6 +215,9 @@ int IR2D::readParam( string _inpf_ )
     // set number of one- and two-exciton states
     n1ex = nchrom;
     n2ex = nchrom*(nchrom+1)/2;
+
+    cout << ">>> There are " << n1ex << " one-exciton states and " \
+         << n2ex << " two-exciton states." << endl;
 
     // shift energies by mean of spectral window to avoid high frequency oscillations
     shift = 0.5*(window1 + window0);
@@ -456,6 +467,78 @@ int IR2D::build_ce_mu()
 
     return IR2DOK;
 }
+
+int IR2D::geteiH1mu0( int it0, int it1 )
+// integrate the 1-exciton Hamiltonian
+{
+    int i;
+    complex<double> *eiH1, *work2, *work1;
+    complex<double> *mu;
+    
+    eiH1 = new complex<double>[n1ex*n1ex]();
+    work2= new complex<double>[n1ex*n1ex]();
+    work1= new complex<double>[n1ex*n1ex]();
+    mu   = new complex<double>[n1ex]();
+    
+    // deterimine e^-iH1dt/(2*Hbar), return to eiH1
+    doeiH( eiH1, H1, n1ex );
+
+    // do the integration
+    if ( it1 == it0 ){
+        // first zero all elements
+        for (i = 0; i < n1ex*n1ex; i ++ ) eiH1_t0t1[i] = complex_zero;
+        // at t1==t0, the integral is 0, so e^0 is Identity matrix
+        for (i = 0; i < n1ex; i ++ ) eiH1_t0t1[i*n1ex +i] = complex_one;
+    }
+    else{
+        // integrate with the trapezoid rule using the last and current
+        // exponentiated hamiltonians
+        // work2=eiH1_t1_last*eiH1_t0t1
+        cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                     n1ex, n1ex, n1ex, &complex_one, eiH1_t1_last, n1ex, \
+                     eiH1_t0t1, n1ex, &complex_zero, work2, n1ex );
+        // eiH1_t0t1=eiH1*work2
+        cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                     n1ex, n1ex, n1ex, &complex_one, eiH1, n1ex, \
+                     work2, n1ex, &complex_zero, eiH1_t0t1, n1ex );
+    }
+    memcpy( eiH1_t1_last, eiH1, sizeof(complex<double>)*n1ex*n1ex );
+
+    // get mu_eg_0 at it0 
+    // x component
+    for ( i = 0; i < n1ex; i ++ ) mu[i] = complex_one*mu_eg_t0_x[i];
+    // work1=eiH1_t0t1*mu
+    cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                 &complex_one, eiH1_t0t1, n1ex, mu, 1, \
+                 &complex_zero, work1, 1 );
+    for ( i = 0; i < n1ex; i ++ ) eiH1_mu_eg_t0_x[it0*n1ex + i] = work1[i];
+
+    // y component
+    for ( i = 0; i < n1ex; i ++ ) mu[i] = complex_one*mu_eg_t0_y[i];
+    // work1=eiH1_t0t1*mu
+    cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                 &complex_one, eiH1_t0t1, n1ex, mu, 1, \
+                 &complex_zero, work1, 1 );
+    for ( i = 0; i < n1ex; i ++ ) eiH1_mu_eg_t0_y[it0*n1ex + i] = work1[i];
+
+    // z component
+    for ( i = 0; i < n1ex; i ++ ) mu[i] = complex_one*mu_eg_t0_z[i];
+    // work1=eiH1_t0t1*mu
+    cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                 &complex_one, eiH1_t0t1, n1ex, mu, 1, \
+                 &complex_zero, work1, 1 );
+    for ( i = 0; i < n1ex; i ++ ) eiH1_mu_eg_t0_z[it0*n1ex + i] = work1[i];
+
+
+    delete [] eiH1;
+    delete [] work2;
+    delete [] work1;
+    delete [] mu;
+
+    return IR2DOK;
+}
+
+
 
 int IR2D::propigateH1( int t0, int t1, string which )
 // integrate the 1-exciton Hamiltonian
@@ -1378,7 +1461,7 @@ int main( int argc, char* argv[] )
 {
     int sample;
     int it0, it1, it2, it3;
-    int it1_max, it2_max, it3_max;
+    int it1_max, it2_max, it3_max, it0_min;
     int ndx;
 
     // check user input to program
@@ -1392,26 +1475,75 @@ int main( int argc, char* argv[] )
     IR2D spectrum( argv[1] ); 
 
     /* TODO:
-     * This program could be made much more efficient with a slight rewrite
-     * that follows these steps
+     * This program could be made more efficient with a small rewrite:
      * 1). For a given sample, set the frame where it2=0 as a reference frame, 
-     *     instead of where it0=0
-     * 2). H1 and H2 will then only need to be propigated once during the waiting
-     *     time and not for every new it1, ie the t1-t2 integrals
-     * 3). the t0-t1 integral can then be propigated only once, but it will need
-     *     to be saved at each time step. An alternative is to do the matrix
-     *     multiplication with the dipole, so only an n1ex x 1 array needs to be saved
-     *     instead of a n1ex x n1ex matrix. This may be a little tricky, but I think
-     *     it will work
-     * 4). finally, the same can be done with the t2-t3 integrals
-     * 5). the response functions can then be calculated
-     * This may lead to a little less intuitive program, but I expect a speedup on the
-     * order of t1max, which could be about 250-1000, depending on t1max.
+     *     instead of the frame where it0=0. check
+     * 2). eiH1_t1t2 and eiH2_t1t2 will then only need to be propigated once during 
+     *     the waiting time and not for every new it1. check
+     * 3). propigate mu(it0) and save for all it0 -- will require saving t1t3max Nx1 D arrays
+     *     and a t1t3max loop
+     * 4). Then, i think you should be able to loop over t3 and calculate all of the response
+     *     functions, for a total of 2*t1t3max iterations, rather than t1t3max^2
+     * This may lead to a little less intuitive program, but if it can work, the speedup
+     * will be dramatic.
+     *
+     * If you really want to increase performance, you can use sparse matrices and GPU
      */
 
     // Loop over the trajectory
     for ( sample = 0; sample < spectrum.nsamples; sample ++ ){
 
+        fprintf(stderr, "    Now processing sample %d/%d starting at %.2f ps\n", \
+                sample+1, spectrum.nsamples, it0*spectrum.dt ); fflush(stderr);
+ 
+        // set all maxes and min
+        it1_max = spectrum.t1t3_npoints - 1 + \
+                  sample*static_cast<int>(spectrum.sample_every/spectrum.dt);
+        it0_min = it1_max - spectrum.t1t3_npoints;
+        it2_max = it1_max + static_cast<int>(spectrum.t2/spectrum.dt);
+        it3_max = it2_max + spectrum.t1t3_npoints - 1;
+        
+        // get eiH_t1t2
+        for ( it2 = it1_max; it2 <= it2_max; it2 ++ ){
+            if ( spectrum.readEframe(it2) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.propigateH1( it1_max, it2, "t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.propigateH2( it1_max, it2, "t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);
+        }
+
+        // read in dipoles at t1 and t2
+        if ( spectrum.readDframe(it1_max) != IR2DOK ) exit(EXIT_FAILURE);
+        if ( spectrum.setMUatT("t1")  != IR2DOK ) exit(EXIT_FAILURE);
+        if ( spectrum.readDframe(it2_max) != IR2DOK ) exit(EXIT_FAILURE);
+        if ( spectrum.setMUatT("t2")  != IR2DOK ) exit(EXIT_FAILURE);
+
+        // loop over all it0 and get propigated mu
+        for ( it0 = it1_max; it0 > it0_min; it0 -- ){
+            if ( spectrum.readEframe(it0) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.readDframe(it0) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.setMUatT("t0")  != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.geteiH1mu0(it0, it1_max) != IR2DOK ) exit(EXIT_FAILURE);
+        }
+
+        // now loop over t3 and get the response function
+        for ( it3 = it2_max; it3 <= it3_max; it3 ++ ){
+            if ( spectrum.readEframe(it3) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.propigateH1( it2_max, it3, "t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.propigateH2( it2_max, it3, "t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.readDframe(it3) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.setMUatT("t3")  != IR2DOK ) exit(EXIT_FAILURE);
+
+            // these will have to be modified
+            for ( it1 = 0; it1 < spectrum.t1t3_npoints; it1 ++ ){
+                /*
+                ndx = (it1)*spectrum.t1t3_npoints + it3;
+                spectrum.R2D_R1[ndx] += spectrum.getR2D_R1(it1, it3);
+                spectrum.R2D_R2[ndx] += spectrum.getR2D_R2(it1, it3);
+                */
+            }
+        }
+        // old stuff
+
+        /*
         // get frame number, read and save dipole at t0
         it0 = sample*static_cast<int>(spectrum.sample_every/spectrum.dt);
         fprintf(stderr, "    Now processing sample %d/%d starting at %.2f ps\n", \
@@ -1474,6 +1606,7 @@ int main( int argc, char* argv[] )
             }
             printProgress( it1-it0+1, spectrum.t1t3_npoints );
         }
+        */
         cerr << endl;
     }
 

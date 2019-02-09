@@ -81,6 +81,9 @@ class IR2D
         double *mu_ce_t1_z;             // one-to-two-exciton dipole vector at t1 - z component
         double *mu_ce_t2_z;             // one-to-two-exciton dipole vector at t2 - z component
         double *mu_ce_t3_z;             // one-to-two-exciton dipole vector at t3 - z component
+        complex<double> *eiH1_mu_eg_t0_x; // propigated dipole at t0 - x component
+        complex<double> *eiH1_mu_eg_t0_y; // propigated dipole at t0 - y component
+        complex<double> *eiH1_mu_eg_t0_z; // propigated dipole at t0 - z component
         
         // complex constants
         const complex<double> img          = {0.,1.};   
@@ -119,5 +122,6 @@ class IR2D
         complex<double> getR1D();
         complex<double> getR2D_R1();
         complex<double> getR2D_R2();
+        int geteiH1mu0(int it0, int it1_max);
 };
 #endif
