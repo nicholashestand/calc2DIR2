@@ -1,15 +1,16 @@
 # input file template for calc2DIR
 energy_file  Energy.bin  # energy file
 dipole_file  Dipole.bin  # dipole file
-trjlen       1000000     # number of frames in energy and dipole files
+trjlen       100000      # number of frames in energy and dipole files
+nchrom       2           # number of chromophores
 output_file  spectrum    # name for output files
-time_step    0.02        # time step in ps
-t1t3_max     5.          # maximum t1 and t3 in ps
+time_step    0.01        # time step in ps
+t1t3_max     5.00        # maximum t1 and t3 in ps
 t2           0.          # waiting time in ps
 lifetimeT1   0.5         # lifetime T1 in ps
-nsamples     2000        # number of samples to take
-sample_every 10.         # how often to sample system in ps 
+nsamples     100         # number of samples to take
+sample_every 1.          # how often to sample system in ps 
 window0      1400        # lower limit for spectral window
-window1      1600        # upper limit for spectral window
+window1      1700        # upper limit for spectral window
 anharm       20.0        # anharmonicity in cm-1
 fftlen       4096        # number of points for 1D of ffts
