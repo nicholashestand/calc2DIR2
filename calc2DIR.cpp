@@ -272,6 +272,11 @@ int IR2D::readEframe( int frame )
     // do it here to avoid possible problems doing it later since H1 can change
     if ( buildH2() != IR2DOK ) return 2;
 
+    // shift energies so eigenvalues are close to zero, these are added back later
+    // after taking the fft
+    for ( i = 0; i < n1ex; i ++ ) H1[i*n1ex + i] -= shift;
+    for ( i = 0; i < n2ex; i ++ ) H2[i*n2ex + i] -= 2.*shift;
+
     delete [] Htmp;
     return IR2DOK;
 }
@@ -1472,13 +1477,10 @@ int main( int argc, char* argv[] )
         cerr << endl;
     }
 
-    // account for dephasing phenomonelogically, normalize, and
-    // get rid of high-frequency oscillations
+    // account for dephasing phenomonelogically and normalize
     for ( it1 = 0; it1 < spectrum.t1t3_npoints; it1 ++ ){
         // dephasing and normalization -- linear
         spectrum.R1D[it1]*=exp(-it1*spectrum.dt/spectrum.lifetime_T2)/(1.*spectrum.nsamples);
-        // remove high-frequency oscillation
-        spectrum.R1D[it1]*=exp(spectrum.img*(spectrum.dt*it1*spectrum.shift/HBAR));
         for ( it3 = 0; it3 < spectrum.t1t3_npoints; it3 ++ ){
             ndx = it1 * spectrum.t1t3_npoints + it3;
             // dephasing and normalization -- rephasing
@@ -1486,13 +1488,9 @@ int main( int argc, char* argv[] )
             // should have a different relaxation time, but we ignore that here...
             spectrum.R2D_R1[ ndx ]*= exp(-(it1+2.*it2+it3)*spectrum.dt/\
                                      spectrum.lifetime_T2) / ( 1.*spectrum.nsamples );
-            // remove high-frequency oscillation
-            spectrum.R2D_R1[ ndx ]*= exp(spectrum.img*spectrum.dt*((-it1+it3)*spectrum.shift)/HBAR);
             // dephasing and normalization -- non-rephasing
             spectrum.R2D_R2[ ndx ]*= exp(-(it1+2.*it2+it3)*spectrum.dt/\
                                      spectrum.lifetime_T2) / ( 1.*spectrum.nsamples );
-            // remove high-frequency oscillation
-            spectrum.R2D_R2[ ndx ]*= exp(spectrum.img*spectrum.dt*((it1+it3)*spectrum.shift)/HBAR);
         }
     }
 
