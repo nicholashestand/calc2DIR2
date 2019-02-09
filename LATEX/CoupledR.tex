@@ -470,6 +470,7 @@ This is also omitted for brevity.}\label{fig:fd3}
 \clearpage
 \section{Third-Order Response Functions -- Rephasing vs. Non-Rephasing}
 The eight contributions to the third-order response functions are now classified as rephasing or non-rephasing and as either ground-state bleach, stimulated emission, excited state absorption, or two-quantum.\cite{Hamm2011}
+They are also expressed in a manner such that the high-frequency oscillations are removed from the system by subtracting the average energy $\omega_{0}$ from the Hamiltonian.
 Finally, we also rewrite the equations so that in the corresponding Feynman diagrams the last interaction gives emission from the ket (left), following the convention in Hamm and Zanni.\cite{Hamm2011}
 This should make the numerical implementation of these equations more straightforward.
 
@@ -495,7 +496,11 @@ This should make the numerical implementation of these equations more straightfo
 \begin{equation}
 \begin{split}
  R_\mathrm{GSB}'(t_{1},t_{2},t_{3})=&\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{0})]\exp\left[i/\hbar\int_{\tau_{0}}^{\tau_{1}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{1})]\right.\\
-			  \times&\left.\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{3})]\exp\left[-i/\hbar\int_{\tau_{2}}^{\tau_{3}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{2})]\right\rangle_{b}
+ \times&\left.\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{3})]\exp\left[-i/\hbar\int_{\tau_{2}}^{\tau_{3}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{2})]\right\rangle_{b}\\
+%
+ =&\exp\left[i t_{1}\omega_{0}/\hbar-it_{3}\omega_{0}/\hbar\right]\\
+ \times&\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{0})]\exp\left[i/\hbar\int_{\tau_{0}}^{\tau_{1}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{1})]\right.\\
+ \times&\left.\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{3})]\exp\left[-i/\hbar\int_{\tau_{2}}^{\tau_{3}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{2})]\right\rangle_{b}\\
 \end{split}
 \end{equation}
 The rephasing ground state bleach pathway is given by the one-exciton pathway of $R_{3}^{(3)}$.
@@ -524,11 +529,15 @@ The rephasing ground state bleach pathway is given by the one-exciton pathway of
 \begin{equation}
 \begin{split}
  R_\mathrm{SE}'(t_{1},t_{2},t_{3})=&\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{0})]\exp\left[i/\hbar\int_{\tau_{0}}^{\tau_{2}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{2})]\right.\\
-			  \times&\left.\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{3})]\exp\left[-i/\hbar\int_{\tau_{1}}^{\tau_{3}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{1})]\right\rangle_{b}
+ \times&\left.\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{3})]\exp\left[-i/\hbar\int_{\tau_{1}}^{\tau_{3}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{1})]\right\rangle_{b}\\
+ =&\exp\left[i t_{1}\omega_{0}/\hbar-it_{3}\omega_{0}/\hbar\right]\\
+ &\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{0})]\exp\left[i/\hbar\int_{\tau_{0}}^{\tau_{2}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{2})]\right.\\
+ \times&\left.\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{3})]\exp\left[-i/\hbar\int_{\tau_{1}}^{\tau_{3}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{1})]\right\rangle_{b}
 \end{split}
 \end{equation}
 The rephasing stimulated emission pathway is given by the one-exciton pathway of $R_{2}^{(3)}$.
 
+\clearpage
 \subsection{Rephasing: Excited State Absorption}
 \begin{figure}[h]
 \centering
@@ -551,9 +560,14 @@ The rephasing stimulated emission pathway is given by the one-exciton pathway of
 \begin{equation}
 \begin{split}
  R_\mathrm{ESA}'(t_{1},t_{2},t_{3})=-
-			  &\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{1})]\exp\left[-i/\hbar\int_{\tau_{1}}^{\tau_{2}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{12} [\vect q(\tau_{2})]\right.\\
-			  &\times\exp\left[-i/\hbar\int_{\tau_{2}}^{\tau_{3}}\underbar{\vect{H}}^{2}[\vect q(\tau)]d\tau\right]\\
-			  \times&\left.\underbar{\vect{M}}_{12}^{T}[\vect q(\tau_{3})]\exp\left[i/\hbar\int_{\tau_{0}}^{\tau_{3}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{0})]\right\rangle_{b}.
+ &\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{1})]\exp\left[-i/\hbar\int_{\tau_{1}}^{\tau_{2}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{12} [\vect q(\tau_{2})]\right.\\
+ &\times\exp\left[-i/\hbar\int_{\tau_{2}}^{\tau_{3}}\underbar{\vect{H}}^{2}[\vect q(\tau)]d\tau\right]\\
+ \times&\left.\underbar{\vect{M}}_{12}^{T}[\vect q(\tau_{3})]\exp\left[i/\hbar\int_{\tau_{0}}^{\tau_{3}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{0})]\right\rangle_{b}.\\
+ %
+ =&-\exp\left[i t_{1}\omega_{0}/\hbar-it_{3}\omega_{0}/\hbar\right]\\
+ &\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{1})]\exp\left[-i/\hbar\int_{\tau_{1}}^{\tau_{2}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{12} [\vect q(\tau_{2})]\right.\\
+ &\times\exp\left[-i/\hbar\int_{\tau_{2}}^{\tau_{3}}\left(\underbar{\vect{H}}^{2}[\vect q(\tau)]-2\omega_{0}\right)d\tau\right]\\
+ \times&\left.\underbar{\vect{M}}_{12}^{T}[\vect q(\tau_{3})]\exp\left[i/\hbar\int_{\tau_{0}}^{\tau_{3}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{0})]\right\rangle_{b}.\\
 \end{split}
 \end{equation}
 The rephasing excited state absorption pathway is given by the minus complex conjugate of the two-exciton pathway of $R_{1}^{(3)}$.\cite{Hamm2011}
@@ -563,7 +577,7 @@ The rephasing excited state absorption pathway is given by the minus complex con
 \begin{figure}[h]
 \centering
 \begin{tikzpicture}[x=.5cm,y=.5cm]
-\node[above] at (2, 4) {$R_\mathrm{GSB}''$};
+\node[above] at (2, 4) {$R_\mathrm{GSB}''(t_{1},t_{2},t_{3})$};
 %ground state bleach
 \draw (0,0) -- (0,4);
 \draw (4,0) -- (4,4);
@@ -581,16 +595,20 @@ The rephasing excited state absorption pathway is given by the minus complex con
 \begin{equation}
 \begin{split}
  R_\mathrm{GSB}''(t_{1},t_{2},t_{3})=&\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{3})]\exp\left[-i/\hbar\int_{\tau_{2}}^{\tau_{3}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{2})]\right.\\
-			  \times&\left.\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{1})]\exp\left[-i/\hbar\int_{\tau_{0}}^{\tau_{1}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{0})]\right\rangle_{b}
+ \times&\left.\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{1})]\exp\left[-i/\hbar\int_{\tau_{0}}^{\tau_{1}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{0})]\right\rangle_{b}\\
+ =&\exp\left[-i t_{1}\omega_{0}/\hbar-it_{3}\omega_{0}/\hbar\right]\\
+ &\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{3})]\exp\left[-i/\hbar\int_{\tau_{2}}^{\tau_{3}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{2})]\right.\\
+ \times&\left.\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{1})]\exp\left[-i/\hbar\int_{\tau_{0}}^{\tau_{1}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{0})]\right\rangle_{b}
 \end{split}
 \end{equation}
 The non-rephasing ground state bleach pathway is given by the one-exciton pathway of $R_{4}^{(3)}$.
 
+\clearpage
 \subsection{Non-Rephasing: Stimulated Emission}
 \begin{figure}[h]
 \centering
 \begin{tikzpicture}[x=.5cm,y=.5cm]
-\node[above] at (2, 4) {$R''_\mathrm{SE}$};
+\node[above] at (2, 4) {$R''_\mathrm{SE}(t_{1},t_{2},t_{3})$};
 %stimulated emission
 \draw (0,0) -- (0,4);
 \draw (4,0) -- (4,4);
@@ -608,7 +626,10 @@ The non-rephasing ground state bleach pathway is given by the one-exciton pathwa
 \begin{equation}
 \begin{split}
  R_\mathrm{SE}''(t_{1},t_{2},t_{3})=&\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{1})]\exp\left[i/\hbar\int_{\tau_{1}}^{\tau_{2}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{2})]\right.\\
-			  \times&\left.\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{3})]\exp\left[-i/\hbar\int_{\tau_{0}}^{\tau_{3}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{0})]\right\rangle_{b}
+ \times&\left.\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{3})]\exp\left[-i/\hbar\int_{\tau_{0}}^{\tau_{3}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{0})]\right\rangle_{b}\\
+ =&\exp\left[-i t_{1}\omega_{0}/\hbar-it_{3}\omega_{0}/\hbar\right]\\
+ &\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{1})]\exp\left[i/\hbar\int_{\tau_{1}}^{\tau_{2}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{2})]\right.\\
+ \times&\left.\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{3})]\exp\left[-i/\hbar\int_{\tau_{0}}^{\tau_{3}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{0})]\right\rangle_{b}\\
 \end{split}
 \end{equation}
 The non-rephasing stimulated emission pathway is given by the one-exciton pathway of $R_{1}^{(3)}$.
@@ -618,7 +639,7 @@ The non-rephasing stimulated emission pathway is given by the one-exciton pathwa
 \begin{figure}[h]
 \centering
 \begin{tikzpicture}[x=.5cm,y=.5cm]
-\node[above] at (2, 4) {$R''_\mathrm{ESA}$};
+\node[above] at (2, 4) {$R''_\mathrm{ESA}(t_{1},t_{2},t_{3})$};
 %excited state absorption
 \draw (0,0) -- (0,4);
 \draw (4,0) -- (4,4);
@@ -636,9 +657,13 @@ The non-rephasing stimulated emission pathway is given by the one-exciton pathwa
 \begin{equation}
 \begin{split}
  R_\mathrm{ESA}''(t_{1},t_{2},t_{3})=-
-			  &\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{0})]\exp\left[-i/\hbar\int_{\tau_{0}}^{\tau_{2}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{12} [\vect q(\tau_{2})]\right.\\
-			  &\times\exp\left[-i/\hbar\int_{\tau_{2}}^{\tau_{3}}\underbar{\vect{H}}^{2}[\vect q(\tau)]d\tau\right]\\
-			  \times&\left.\underbar{\vect{M}}_{12}^{T}[\vect q(\tau_{3})]\exp\left[i/\hbar\int_{\tau_{1}}^{\tau_{3}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{1})]\right\rangle_{b}
+&\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{0})]\exp\left[-i/\hbar\int_{\tau_{0}}^{\tau_{2}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{12} [\vect q(\tau_{2})]\right.\\
+&\times\exp\left[-i/\hbar\int_{\tau_{2}}^{\tau_{3}}\underbar{\vect{H}}^{2}[\vect q(\tau)]d\tau\right]\\
+\times&\left.\underbar{\vect{M}}_{12}^{T}[\vect q(\tau_{3})]\exp\left[i/\hbar\int_{\tau_{1}}^{\tau_{3}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{1})]\right\rangle_{b}\\
+=&-\exp\left[-i t_{1}\omega_{0}/\hbar-it_{3}\omega_{0}/\hbar\right]\\
+&\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{0})]\exp\left[-i/\hbar\int_{\tau_{0}}^{\tau_{2}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{12} [\vect q(\tau_{2})]\right.\\
+&\times\exp\left[-i/\hbar\int_{\tau_{2}}^{\tau_{3}}\left(\underbar{\vect{H}}^{2}[\vect q(\tau)]-2\omega_{0}\right)d\tau\right]\\
+\times&\left.\underbar{\vect{M}}_{12}^{T}[\vect q(\tau_{3})]\exp\left[i/\hbar\int_{\tau_{1}}^{\tau_{3}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{1})]\right\rangle_{b}\\
 \end{split}
 \end{equation}
 The non-rephasing excited state absorption pathway is given by the minus complex conjugate of the two-exciton pathway of $R_{2}^{(3)}$.\cite{Hamm2011}
@@ -647,7 +672,7 @@ The non-rephasing excited state absorption pathway is given by the minus complex
 \begin{figure}[h]
 \centering
 \begin{tikzpicture}[x=.5cm,y=.5cm]
-\node[above] at (2, 4) {$R''_\mathrm{2QI}$};
+\node[above] at (2, 4) {$R''_\mathrm{2QI}(t_{1},t_{2},t_{3})$};
 %two-quantum
 \draw (0,0) -- (0,4);
 \draw (4,0) -- (4,4);
@@ -665,9 +690,13 @@ The non-rephasing excited state absorption pathway is given by the minus complex
 \begin{equation}
 \begin{split}
  R''_\mathrm{2QI}(t_{1},t_{2},t_{3})=
-			  &\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{3})]\exp\left[-i/\hbar\int_{\tau_{2}}^{\tau_{3}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{12} [\vect q(\tau_{2})]\right.\\
-			  &\times\exp\left[-i/\hbar\int_{\tau_{1}}^{\tau_{2}}\underbar{\vect{H}}^{2}[\vect q(\tau)]d\tau\right]\\
-			  \times&\left.\underbar{\vect{M}}_{12}^{T}[\vect q(\tau_{1})]\exp\left[-i/\hbar\int_{\tau_{0}}^{\tau_{1}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{0})]\right\rangle_{b}
+  &\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{3})]\exp\left[-i/\hbar\int_{\tau_{2}}^{\tau_{3}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{12} [\vect q(\tau_{2})]\right.\\
+  &\times\exp\left[-i/\hbar\int_{\tau_{1}}^{\tau_{2}}\underbar{\vect{H}}^{2}[\vect q(\tau)]d\tau\right]\\
+  \times&\left.\underbar{\vect{M}}_{12}^{T}[\vect q(\tau_{1})]\exp\left[-i/\hbar\int_{\tau_{0}}^{\tau_{1}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{0})]\right\rangle_{b}\\
+  =&\exp\left[-i t_{1}\omega_{0}/\hbar-2it_{2}\omega_{0}/\hbar-it_{3}\omega_{0}/\hbar\right]\\
+  &\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{3})]\exp\left[-i/\hbar\int_{\tau_{2}}^{\tau_{3}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{12} [\vect q(\tau_{2})]\right.\\
+  &\times\exp\left[-i/\hbar\int_{\tau_{1}}^{\tau_{2}}\left(\underbar{\vect{H}}^{2}[\vect q(\tau)]-2\omega_{0}\right)d\tau\right]\\
+  \times&\left.\underbar{\vect{M}}_{12}^{T}[\vect q(\tau_{1})]\exp\left[-i/\hbar\int_{\tau_{0}}^{\tau_{1}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{0})]\right\rangle_{b}\\
 \end{split}
 \end{equation}
 The non-rephasing two quantum I pathway is given by the two-exciton pathway of $R_{4}^{(3)}$.
@@ -677,7 +706,7 @@ The non-rephasing two quantum I pathway is given by the two-exciton pathway of $
 \begin{figure}[h]
 \centering
 \begin{tikzpicture}[x=.5cm,y=.5cm]
-\node[above] at (2, 4) {$R''_\mathrm{2QII}$};
+\node[above] at (2, 4) {$R''_\mathrm{2QII}(t_{1},t_{2},t_{3})$};
 %two-quantum
 \draw (0,0) -- (0,4);
 \draw (4,0) -- (4,4);
@@ -695,9 +724,13 @@ The non-rephasing two quantum I pathway is given by the two-exciton pathway of $
 \begin{equation}
 \begin{split}
  R''_\mathrm{2QII}(t_{1},t_{2},t_{3})=-
-			  &\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{0})]\exp\left[-i/\hbar\int_{\tau_{0}}^{\tau_{1}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{12} [\vect q(\tau_{1})]\right.\\
-			  &\times\exp\left[-i/\hbar\int_{\tau_{1}}^{\tau_{3}}\underbar{\vect{H}}^{2}[\vect q(\tau)]d\tau\right]\\
-			  \times&\left.\underbar{\vect{M}}_{12}^{T}[\vect q(\tau_{3})]\exp\left[i/\hbar\int_{\tau_{2}}^{\tau_{3}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{2})]\right\rangle_{b}.
+ &\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{0})]\exp\left[-i/\hbar\int_{\tau_{0}}^{\tau_{1}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{12} [\vect q(\tau_{1})]\right.\\
+ &\times\exp\left[-i/\hbar\int_{\tau_{1}}^{\tau_{3}}\underbar{\vect{H}}^{2}[\vect q(\tau)]d\tau\right]\\
+ \times&\left.\underbar{\vect{M}}_{12}^{T}[\vect q(\tau_{3})]\exp\left[i/\hbar\int_{\tau_{2}}^{\tau_{3}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{2})]\right\rangle_{b}\\
+ =&-\exp\left[-i t_{1}\omega_{0}/\hbar-2it_{2}\omega_{0}/\hbar-it_{3}\omega_{0}/\hbar\right]\\
+ &\left\langle\underbar{\vect{M}}_{g1}^{T}[\vect q(\tau_{0})]\exp\left[-i/\hbar\int_{\tau_{0}}^{\tau_{1}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{12} [\vect q(\tau_{1})]\right.\\
+ &\times\exp\left[-i/\hbar\int_{\tau_{1}}^{\tau_{3}}\left(\underbar{\vect{H}}^{2}[\vect q(\tau)]-2\omega_{0}\right)d\tau\right]\\
+ \times&\left.\underbar{\vect{M}}_{12}^{T}[\vect q(\tau_{3})]\exp\left[i/\hbar\int_{\tau_{2}}^{\tau_{3}}\left(\underbar{\vect{H}}^{1}[\vect q(\tau)]-\omega_{0}\right)d\tau\right] \underbar{\vect{M}}_{g1} [\vect q(\tau_{2})]\right\rangle_{b}.
 \end{split}
 \end{equation}
 The non-rephasing two quantum II pathway is given by the minus complex conjugate of the two-exciton pathway of $R_{3}^{(3)}$.\cite{Hamm2011}
