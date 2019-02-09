@@ -69,7 +69,6 @@ for i in range(nplt):
         ax[i,0].set_ylabel(args.parse_args().ylabel[0], fontsize=fontsize)
     if ( args.parse_args().label ):
         a=(args.parse_args().label[i],)
-        print a
         ax[i,0].legend(a,fontsize=fontsize, frameon=False)
 
     ax[i,0].minorticks_on()
