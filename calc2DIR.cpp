@@ -845,7 +845,7 @@ complex<double> IR2D::getR2D_R1(int it0)
         cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
                      &complex_one, eiH1_t1t2, n1ex, mu1_eg, 1, \
                      &complex_zero, work1a, 1 );
-        // work2a=mu2_ce*work1a
+        // work2a=mu2_ce'*work1a
         cblas_zgemv( CblasRowMajor, CblasTrans, n1ex, n2ex,\
                      &complex_one, mu2_ce, n2ex, work1a, 1, \
                      &complex_zero, work2a, 1 );
@@ -1379,21 +1379,7 @@ int main( int argc, char* argv[] )
     // get input file name and initialize IR2D class
     IR2D spectrum( argv[1] ); 
 
-    /* TODO:
-     * This program could be made more efficient with a small rewrite:
-     * 1). For a given sample, set the frame where it2=0 as a reference frame, 
-     *     instead of the frame where it0=0. check
-     * 2). eiH1_t1t2 and eiH2_t1t2 will then only need to be propigated once during 
-     *     the waiting time and not for every new it1. check
-     * 3). propigate mu(it0) and save for all it0 -- will require saving t1t3max Nx1 D arrays
-     *     and a t1t3max loop
-     * 4). Then, i think you should be able to loop over t3 and calculate all of the response
-     *     functions, for a total of 2*t1t3max iterations, rather than t1t3max^2
-     * This may lead to a little less intuitive program, but if it can work, the speedup
-     * will be dramatic.
-     *
-     * If you really want to increase performance, you can use sparse matrices and GPU
-     */
+    // TODO: If you really want to increase performance, you can use sparse matrices and GPU
 
     // Loop over the samples
     for ( sample = 0; sample < spectrum.nsamples; sample ++ ){
@@ -1403,6 +1389,7 @@ int main( int argc, char* argv[] )
         it1_max = it0_min + spectrum.t1t3_npoints - 1;
         it2_max = it1_max + static_cast<int>(spectrum.t2/spectrum.dt);
         it3_max = it2_max + spectrum.t1t3_npoints - 1;
+        //cout << it0_min << "-" << it1_max << " " << it2_max << "-" << it3_max << endl;
 
         fprintf(stderr, "    Now processing sample %d/%d with t1 at %.2f ps\n", \
                 sample+1, spectrum.nsamples, it1_max*spectrum.dt ); fflush(stderr);
@@ -1446,17 +1433,17 @@ int main( int argc, char* argv[] )
             if ( spectrum.readDframe(it3) != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.setMUatT("t3")  != IR2DOK ) exit(EXIT_FAILURE);
             // get response function for all it0
-            for ( it0 = 0; it0 < spectrum.t1t3_npoints-1; it0 ++ ){
-                ndx = it0*spectrum.t1t3_npoints + it3;
+            for ( it0 = 0; it0 < spectrum.t1t3_npoints; it0 ++ ){
+                ndx = it0*spectrum.t1t3_npoints + it3-it2_max;
                 spectrum.R2D_R1[ndx] += spectrum.getR2D_R1(it0);
                 spectrum.R2D_R2[ndx] += spectrum.getR2D_R2(it0);
             }
-            printProgress( it3-it2_max+1, spectrum.t1t3_npoints );
+            //printProgress( it3-it2_max+1, spectrum.t1t3_npoints );
             if ( it3 == it3_max ) continue; // dont propigate the last frame
             if ( spectrum.prop_eiH1(it3,"t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.prop_eiH2(it3,"t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);
         }
-        cerr << endl;
+        //cerr << endl;
     }
 
     // account for dephasing phenomonelogically and normalize
