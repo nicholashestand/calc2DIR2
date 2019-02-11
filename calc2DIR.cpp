@@ -29,14 +29,12 @@ IR2D::IR2D( string _inpf_ )
     R1D             = new complex<double>[t1t3_npoints]();
     R2D_R1          = new complex<double>[t1t3_npoints*t1t3_npoints]();
     R2D_R2          = new complex<double>[t1t3_npoints*t1t3_npoints]();
+
     // one exciton
     H1              = new double [n1ex*n1ex]();
     eiH1_t0t1       = new complex<double>[n1ex*n1ex]();
     eiH1_t1t2       = new complex<double>[n1ex*n1ex]();
     eiH1_t2t3       = new complex<double>[n1ex*n1ex]();
-    eiH1_t1_last    = new complex<double>[n1ex*n1ex]();
-    eiH1_t2_last    = new complex<double>[n1ex*n1ex]();
-    eiH1_t3_last    = new complex<double>[n1ex*n1ex]();
     mu_eg_x         = new double[n1ex]();
     mu_eg_y         = new double[n1ex]();
     mu_eg_z         = new double[n1ex]();
@@ -52,17 +50,14 @@ IR2D::IR2D( string _inpf_ )
     mu_eg_t1_z      = new double[n1ex]();
     mu_eg_t2_z      = new double[n1ex]();
     mu_eg_t3_z      = new double[n1ex]();
-
-    eiH1_mu_eg_t0_x = new complex<double>[n1ex*t1t3_npoints]();
-    eiH1_mu_eg_t0_y = new complex<double>[n1ex*t1t3_npoints]();
-    eiH1_mu_eg_t0_z = new complex<double>[n1ex*t1t3_npoints]();
+    eiH1_t0t1_mu_eg_t0_x = new complex<double>[n1ex*t1t3_npoints]();
+    eiH1_t0t1_mu_eg_t0_y = new complex<double>[n1ex*t1t3_npoints]();
+    eiH1_t0t1_mu_eg_t0_z = new complex<double>[n1ex*t1t3_npoints]();
 
     // two exciton
     H2              = new double [n2ex*n2ex]();
     eiH2_t1t2       = new complex<double>[n2ex*n2ex]();
     eiH2_t2t3       = new complex<double>[n2ex*n2ex]();
-    eiH2_t2_last    = new complex<double>[n2ex*n2ex]();
-    eiH2_t3_last    = new complex<double>[n2ex*n2ex]();
     mu_ce_x         = new double[n1ex*n2ex]();
     mu_ce_y         = new double[n1ex*n2ex]();
     mu_ce_z         = new double[n1ex*n2ex]();
@@ -91,14 +86,12 @@ IR2D::~IR2D()
     delete [] R1D;
     delete [] R2D_R1;
     delete [] R2D_R2;
+
     // one-exciton
     delete [] H1;
     delete [] eiH1_t0t1;
     delete [] eiH1_t1t2;
     delete [] eiH1_t2t3;
-    delete [] eiH1_t1_last;
-    delete [] eiH1_t2_last;
-    delete [] eiH1_t3_last;
     delete [] mu_eg_x;
     delete [] mu_eg_y;
     delete [] mu_eg_z;
@@ -114,15 +107,14 @@ IR2D::~IR2D()
     delete [] mu_eg_t1_z;
     delete [] mu_eg_t2_z;
     delete [] mu_eg_t3_z;
-    delete [] eiH1_mu_eg_t0_x;
-    delete [] eiH1_mu_eg_t0_y;
-    delete [] eiH1_mu_eg_t0_z;
+    delete [] eiH1_t0t1_mu_eg_t0_x;
+    delete [] eiH1_t0t1_mu_eg_t0_y;
+    delete [] eiH1_t0t1_mu_eg_t0_z;
+
     // two-exciton
     delete [] H2;
     delete [] eiH2_t1t2;
     delete [] eiH2_t2t3;
-    delete [] eiH2_t2_last;
-    delete [] eiH2_t3_last;
     delete [] mu_ce_x;
     delete [] mu_ce_y;
     delete [] mu_ce_z;
@@ -398,7 +390,6 @@ int IR2D::buildH2()
     }
     }
 
-    
     // off diagonal couplings between single and double excited states <i,i|H|i,j>
     // make harmonic approximation for the couplings --> gives sqrt(2) factor
     // see Hamm and Zanni chapter 6.1
@@ -412,7 +403,6 @@ int IR2D::buildH2()
     }
     }
         
-    
     // off diagonal couplings between singly excited states <i,j|H|i,k>
     for ( i = 0; i < n1ex; i ++ ){
     for ( j = i+1; j < n1ex; j ++ ){
@@ -468,80 +458,56 @@ int IR2D::build_ce_mu()
     return IR2DOK;
 }
 
-int IR2D::geteiH1mu0( int it0, int it1 )
-// integrate the 1-exciton Hamiltonian
+int IR2D::reset_eiH1( string which )
+// propigate the one exciton hamiltonian to the next time frame
 {
     int i;
-    complex<double> *eiH1, *work2, *work1;
-    complex<double> *mu;
     
-    eiH1 = new complex<double>[n1ex*n1ex]();
-    work2= new complex<double>[n1ex*n1ex]();
-    work1= new complex<double>[n1ex*n1ex]();
-    mu   = new complex<double>[n1ex]();
-    
-    // deterimine e^-iH1dt/(2*Hbar), return to eiH1
-    doeiH( eiH1, H1, n1ex );
-
-    // do the integration
-    if ( it1 == it0 ){
-        // first zero all elements
-        for (i = 0; i < n1ex*n1ex; i ++ ) eiH1_t0t1[i] = complex_zero;
-        // at t1==t0, the integral is 0, so e^0 is Identity matrix
-        for (i = 0; i < n1ex; i ++ ) eiH1_t0t1[i*n1ex +i] = complex_one;
+    // reset eiH1 to complex_one
+    if ( which.compare("t0-t1") == 0 ){
+        for ( i = 0; i < n1ex*n1ex; i ++ ) eiH1_t0t1[i]   = complex_zero;
+        for ( i = 0; i < n1ex; i ++ ) eiH1_t0t1[i*n1ex+i] = complex_one;
+    }
+    else if ( which.compare("t1-t2") == 0 ){
+        for ( i = 0; i < n1ex*n1ex; i ++ ) eiH1_t1t2[i]   = complex_zero;
+        for ( i = 0; i < n1ex; i ++ ) eiH1_t1t2[i*n1ex+i] = complex_one;
+    }
+    else if ( which.compare("t2-t3") == 0 ){
+        for ( i = 0; i < n1ex*n1ex; i ++ ) eiH1_t2t3[i]   = complex_zero;
+        for ( i = 0; i < n1ex; i ++ ) eiH1_t2t3[i*n1ex+i] = complex_one;
     }
     else{
-        // integrate with the trapezoid rule using the last and current
-        // exponentiated hamiltonians
-        // work2=eiH1_t1_last*eiH1_t0t1
-        cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
-                     n1ex, n1ex, n1ex, &complex_one, eiH1_t1_last, n1ex, \
-                     eiH1_t0t1, n1ex, &complex_zero, work2, n1ex );
-        // eiH1_t0t1=eiH1*work2
-        cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
-                     n1ex, n1ex, n1ex, &complex_one, eiH1, n1ex, \
-                     work2, n1ex, &complex_zero, eiH1_t0t1, n1ex );
+        cout << "ERROR:: IR2D::reset_eiH1 which= " << which << \
+                " is unknown." << endl; return 1;
     }
-    memcpy( eiH1_t1_last, eiH1, sizeof(complex<double>)*n1ex*n1ex );
-
-    // get mu_eg_0 at it0 
-    // x component
-    for ( i = 0; i < n1ex; i ++ ) mu[i] = complex_one*mu_eg_t0_x[i];
-    // work1=eiH1_t0t1*mu
-    cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
-                 &complex_one, eiH1_t0t1, n1ex, mu, 1, \
-                 &complex_zero, work1, 1 );
-    for ( i = 0; i < n1ex; i ++ ) eiH1_mu_eg_t0_x[it0*n1ex + i] = work1[i];
-
-    // y component
-    for ( i = 0; i < n1ex; i ++ ) mu[i] = complex_one*mu_eg_t0_y[i];
-    // work1=eiH1_t0t1*mu
-    cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
-                 &complex_one, eiH1_t0t1, n1ex, mu, 1, \
-                 &complex_zero, work1, 1 );
-    for ( i = 0; i < n1ex; i ++ ) eiH1_mu_eg_t0_y[it0*n1ex + i] = work1[i];
-
-    // z component
-    for ( i = 0; i < n1ex; i ++ ) mu[i] = complex_one*mu_eg_t0_z[i];
-    // work1=eiH1_t0t1*mu
-    cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
-                 &complex_one, eiH1_t0t1, n1ex, mu, 1, \
-                 &complex_zero, work1, 1 );
-    for ( i = 0; i < n1ex; i ++ ) eiH1_mu_eg_t0_z[it0*n1ex + i] = work1[i];
-
-
-    delete [] eiH1;
-    delete [] work2;
-    delete [] work1;
-    delete [] mu;
 
     return IR2DOK;
 }
 
+int IR2D::reset_eiH2( string which )
+// propigate the two exciton hamiltonian to the next time frame
+{
+    int i;
+    
+    // reset eiH1 to complex_one
+    if ( which.compare("t1-t2") == 0 ){
+        for ( i = 0; i < n2ex*n2ex; i ++ ) eiH2_t1t2[i]   = complex_zero;
+        for ( i = 0; i < n2ex; i ++ ) eiH2_t1t2[i*n2ex+i] = complex_one;
+    }
+    else if ( which.compare("t2-t3") == 0 ){
+        for ( i = 0; i < n2ex*n2ex; i ++ ) eiH2_t2t3[i]   = complex_zero;
+        for ( i = 0; i < n2ex; i ++ ) eiH2_t2t3[i*n2ex+i] = complex_one;
+    }
+    else{
+        cout << "ERROR:: IR2D::reset_eiH2 which= " << which << \
+                " is unknown." << endl; return 1;
+    }
 
+    return IR2DOK;
+}
 
-int IR2D::propigateH1( int t0, int t1, string which )
-// integrate the 1-exciton Hamiltonian
+int IR2D::prop_eiH1( int it0, string which )
+// propigate the one exciton hamiltonian to the next time frame
 {
     int i;
     complex<double> *eiH1, *work;
@@ -549,78 +515,44 @@ int IR2D::propigateH1( int t0, int t1, string which )
     eiH1 = new complex<double>[n1ex*n1ex];
     work = new complex<double>[n1ex*n1ex];
     
+    // read current energy frame and then
     // deterimine e^-iH1dt/(2*Hbar), return to eiH1
-    doeiH( eiH1, H1, n1ex );
+    readEframe(it0);
+    doeiH(eiH1,H1,n1ex);
 
     // do the integration
     if ( which.compare("t0-t1") == 0 ){
-        // do the integration
-        if ( t1 == t0 ){
-            // first zero all elements
-            for (i = 0; i < n1ex*n1ex; i ++ ) eiH1_t0t1[i] = complex_zero;
-            // at t1==t0, the integral is 0, so e^0 is Identity matrix
-            for (i = 0; i < n1ex; i ++ ) eiH1_t0t1[i*n1ex +i] = complex_one;
-        }
-        else{
-            // integrate with the trapezoid rule using the last and current
-            // exponentiated hamiltonians
-            // work=eiH1_t0t1*eiH1_t1_last
-            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
-                         n1ex, n1ex, n1ex, &complex_one, eiH1_t0t1, n1ex, \
-                         eiH1_t1_last, n1ex, &complex_zero, work, n1ex );
-            // eiH1_t0t1=work*eiH1
-            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
-                         n1ex, n1ex, n1ex, &complex_one, work, n1ex, \
-                         eiH1, n1ex, &complex_zero, eiH1_t0t1, n1ex );
-        }
-        memcpy( eiH1_t1_last, eiH1, sizeof(complex<double>)*n1ex*n1ex );
+        // add current term to the propigator -- note that in the main
+        // routine t0 iterates backwards from t0_max = t1, so the current
+        // propigator is multiplied on the right
+        // work=eiH1_t0t1*eiH1
+        cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                     n1ex, n1ex, n1ex, &complex_one, eiH1_t0t1, n1ex, \
+                     eiH1, n1ex, &complex_zero, work, n1ex );
+        memcpy( eiH1_t0t1, work, sizeof(complex<double>)*n1ex*n1ex );
     }
     else if ( which.compare("t1-t2") == 0 ){
-        // do the integration
-        if ( t1 == t0 ){
-            // first zero all elements
-            for (i = 0; i < n1ex*n1ex; i ++ ) eiH1_t1t2[i] = complex_zero;
-            // at t1==t0, the integral is 0, so e^0 is Identity matrix
-            for (i = 0; i < n1ex; i ++ ) eiH1_t1t2[i*n1ex +i] = complex_one;
-        }
-        else{
-            // integrate with the trapezoid rule using the last and current
-            // exponentiated hamiltonians
-            // work=eiH1_t1t2*eiH1_t2_last
-            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
-                         n1ex, n1ex, n1ex, &complex_one, eiH1_t1t2, n1ex, \
-                         eiH1_t2_last, n1ex, &complex_zero, work, n1ex );
-            // eiH1_t1t2=work*eiH1
-            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
-                         n1ex, n1ex, n1ex, &complex_one, work, n1ex, \
-                         eiH1, n1ex, &complex_zero, eiH1_t1t2, n1ex );
-        }
-        memcpy( eiH1_t2_last, eiH1, sizeof(complex<double>)*n1ex*n1ex );
+        // work=eiH1*eiH1_t1t2 -- note that in the main routine t2 iterates
+        // forward from t1_max to t2_max, so the current
+        // propigator is multiplied on the left
+        // work=eiH1*eiH1_t1t2
+        cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                     n1ex, n1ex, n1ex, &complex_one, eiH1, n1ex, \
+                     eiH1_t1t2, n1ex, &complex_zero, work, n1ex );
+        memcpy( eiH1_t1t2, work, sizeof(complex<double>)*n1ex*n1ex );
     }
     else if ( which.compare("t2-t3") == 0 ){
-        // do the integration
-        if ( t1 == t0 ){
-            // first zero all elements
-            for (i = 0; i < n1ex*n1ex; i ++ ) eiH1_t2t3[i] = complex_zero;
-            // at t1==t0, the integral is 0, so e^0 is Identity matrix
-            for (i = 0; i < n1ex; i ++ ) eiH1_t2t3[i*n1ex +i] = complex_one;
-        }
-        else{
-            // integrate with the trapezoid rule using the last and current
-            // exponentiated hamiltonians
-            // work=eiH1_t2t3*eiH1_t3_last
-            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
-                         n1ex, n1ex, n1ex, &complex_one, eiH1_t2t3, n1ex, \
-                         eiH1_t3_last, n1ex, &complex_zero, work, n1ex );
-            // eiH1_t2t3=work*eiH1
-            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
-                         n1ex, n1ex, n1ex, &complex_one, work, n1ex, \
-                         eiH1, n1ex, &complex_zero, eiH1_t2t3, n1ex );
-        }
-        memcpy( eiH1_t3_last, eiH1, sizeof(complex<double>)*n1ex*n1ex );
+        // work=eiH1*eiH1_t2t3 -- note that in the main routine t3 iterates
+        // forward from t2_max to t3_max, so the current
+        // propigator is multiplied on the left
+        // work=eiH1*eiH1_t2t3
+        cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                     n1ex, n1ex, n1ex, &complex_one, eiH1, n1ex, \
+                     eiH1_t2t3, n1ex, &complex_zero, work, n1ex );
+        memcpy( eiH1_t2t3, work, sizeof(complex<double>)*n1ex*n1ex );
     }
     else{
-        cout << "ERROR:: IR2D::propigateH1 which= " << which << \
+        cout << "ERROR:: IR2D::prop_eiH1 which= " << which << \
                 " is unknown." << endl; return 1;
     }
 
@@ -629,8 +561,48 @@ int IR2D::propigateH1( int t0, int t1, string which )
     return IR2DOK;
 }
 
-int IR2D::propigateH2( int t0, int t1, string which )
-// integrate the 2-exciton Hamiltonian
+int IR2D::save_eiH1_t0t1_mu0(int it0 )
+// save eiH1_t0t1*mu(t0) for all t0
+{
+    int i;
+    complex<double> *work, *mu;
+    
+    work = new complex<double>[n1ex]();
+    mu   = new complex<double>[n1ex]();
+    
+    // get mu_eg_0 at it0 
+    // x component
+    for ( i = 0; i < n1ex; i ++ ) mu[i] = complex_one*mu_eg_t0_x[i];
+    // work=eiH1_t0t1*mu
+    cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                 &complex_one, eiH1_t0t1, n1ex, mu, 1, \
+                 &complex_zero, work, 1 );
+    memcpy( &eiH1_t0t1_mu_eg_t0_x[it0*n1ex], work, sizeof(complex<double>)*n1ex );
+
+    // y component
+    for ( i = 0; i < n1ex; i ++ ) mu[i] = complex_one*mu_eg_t0_y[i];
+    // work=eiH1_t0t1*mu
+    cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                 &complex_one, eiH1_t0t1, n1ex, mu, 1, \
+                 &complex_zero, work, 1 );
+    memcpy( &eiH1_t0t1_mu_eg_t0_y[it0*n1ex], work, sizeof(complex<double>)*n1ex );
+
+    // z component
+    for ( i = 0; i < n1ex; i ++ ) mu[i] = complex_one*mu_eg_t0_z[i];
+    // work=eiH1_t0t1*mu
+    cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                 &complex_one, eiH1_t0t1, n1ex, mu, 1, \
+                 &complex_zero, work, 1 );
+    memcpy( &eiH1_t0t1_mu_eg_t0_z[it0*n1ex], work, sizeof(complex<double>)*n1ex );
+
+    delete [] work;
+    delete [] mu;
+
+    return IR2DOK;
+}
+
+int IR2D::prop_eiH2( int it0, string which )
+// propigate the one exciton hamiltonian to the next time frame
 {
     int i;
     complex<double> *eiH2, *work;
@@ -638,56 +610,34 @@ int IR2D::propigateH2( int t0, int t1, string which )
     eiH2 = new complex<double>[n2ex*n2ex];
     work = new complex<double>[n2ex*n2ex];
     
-    // deterimine e^-iH1dt/(2*Hbar), return to eiH1
-    doeiH( eiH2, H2, n2ex );
+    // read current energy frame and then
+    // deterimine e^-iH2dt/(2*Hbar), return to eiH1
+    readEframe(it0);
+    doeiH(eiH2,H2,n2ex);
 
     // do the integration
     if ( which.compare("t1-t2") == 0 ){
-        // do the integration
-        if ( t1 == t0 ){
-            // first zero all elements
-            for (i = 0; i < n2ex*n2ex; i ++ ) eiH2_t1t2[i] = complex_zero;
-            // at t1==t0, the integral is 0, so e^0 is Identity matrix
-            for (i = 0; i < n2ex; i ++ ) eiH2_t1t2[i*n2ex +i] = complex_one;
-        }
-        else{
-            // integrate with the trapezoid rule using the last and current
-            // exponentiated hamiltonians
-            // work=eiH2_t1t2*eiH2_t2_last
-            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
-                         n2ex, n2ex, n2ex, &complex_one, eiH2_t1t2, n2ex, \
-                         eiH2_t2_last, n2ex, &complex_zero, work, n2ex );
-            // eiH2_t1t2=work*eiH2
-            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
-                         n2ex, n2ex, n2ex, &complex_one, work, n2ex, \
-                         eiH2, n2ex, &complex_zero, eiH2_t1t2, n2ex );
-        }
-        memcpy( eiH2_t2_last, eiH2, sizeof(complex<double>)*n2ex*n2ex );
+        // work=eiH2*eiH2_t1t2 -- note that in the main routine t2 iterates
+        // forward from t1_max to t2_max, so the current propigator 
+        // is multiplied on the left
+        // work=eiH2*eiH2_t1t2
+        cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                     n2ex, n2ex, n2ex, &complex_one, eiH2, n2ex, \
+                     eiH2_t1t2, n2ex, &complex_zero, work, n2ex );
+        memcpy( eiH2_t1t2, work, sizeof(complex<double>)*n2ex*n2ex );
     }
     else if ( which.compare("t2-t3") == 0 ){
-        // do the integration
-        if ( t1 == t0 ){
-            // first zero all elements
-            for (i = 0; i < n2ex*n2ex; i ++ ) eiH2_t2t3[i] = complex_zero;
-            // at t1==t0, the integral is 0, so e^0 is Identity matrix
-            for (i = 0; i < n2ex; i ++ ) eiH2_t2t3[i*n2ex +i] = complex_one;
-        }
-        else{
-            // integrate with the trapezoid rule using the last and current
-            // exponentiated hamiltonians
-            // work=eiH2_t2t3*eiH2_t3_last
-            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
-                         n2ex, n2ex, n2ex, &complex_one, eiH2_t2t3, n2ex, \
-                         eiH2_t3_last, n2ex, &complex_zero, work, n2ex );
-            // eiH2_t2t3=work*eiH2
-            cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
-                         n2ex, n2ex, n2ex, &complex_one, work, n2ex, \
-                         eiH2, n2ex, &complex_zero, eiH2_t2t3, n2ex );
-        }
-        memcpy( eiH2_t3_last, eiH2, sizeof(complex<double>)*n2ex*n2ex );
+        // work=eiH2*eiH2_t2t3 -- note that in the main routine t3 iterates
+        // forward from t2_max to t3_max, so the current propigator 
+        // is multiplied on the left
+        // work=eiH2*eiH2_t2t3
+        cblas_zgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, \
+                     n2ex, n2ex, n2ex, &complex_one, eiH2, n2ex, \
+                     eiH2_t2t3, n2ex, &complex_zero, work, n2ex );
+        memcpy( eiH2_t2t3, work, sizeof(complex<double>)*n2ex*n2ex );
     }
     else{
-        cout << "ERROR:: IR2D::propigateH2 which= " << which << \
+        cout << "ERROR:: IR2D::prop_eiH2 which= " << which << \
                 " is unknown." << endl; return 1;
     }
 
@@ -716,7 +666,7 @@ int IR2D::doeiH( complex<double> *eiH, double *H, int N )
 
     // exponentiate eigenvalues
     for ( i = 0; i < N; i ++ ){
-        arg = -img*W[i]*dt/(2.*HBAR); // divide by two to do trapezoid integration
+        arg = -img*W[i]*dt/HBAR;
         eiH[i*N+i] = exp(arg);
     }
 
@@ -746,49 +696,42 @@ int IR2D::doeiH( complex<double> *eiH, double *H, int N )
     return IR2DOK;
 }
 
-complex<double> IR2D::getR1D()
+complex<double> IR2D::getR1D(int it0)
 // return the linear response function
 {
     int i, k;
-    complex<double> *mu0, *mu1, *work;
+    complex<double> *mu0, *mu1;
     complex<double> R1D, res;
 
     mu0  = new complex<double>[n1ex];
     mu1  = new complex<double>[n1ex];
-    work = new complex<double>[n1ex];
 
     R1D = complex_zero;
 
-    // get the isotropic average -- loop over x y and z
-    for ( k = 0; k < 3; k ++ ){
-        if ( k == 0 ){
-            // x component
-            for ( i = 0; i < n1ex; i ++ ) mu0[i] = mu_eg_t0_x[i];
-            for ( i = 0; i < n1ex; i ++ ) mu1[i] = mu_eg_t1_x[i];
-        }
-            // y component
-        else if ( k == 1){
-            for ( i = 0; i < n1ex; i ++ ) mu0[i] = mu_eg_t0_y[i];
-            for ( i = 0; i < n1ex; i ++ ) mu1[i] = mu_eg_t1_y[i];
-        }
-            // z component
-        else if ( k == 2){
-            for ( i = 0; i < n1ex; i ++ ) mu0[i] = mu_eg_t0_z[i];
-            for ( i = 0; i < n1ex; i ++ ) mu1[i] = mu_eg_t1_z[i];
-        }
-        // do the matrix algebra
-        // work=eiH1_t0t1*mu0
-        cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t0t1, n1ex, mu0, 1, \
-                     &complex_zero, work, 1 );
-        // res=mu1*work
-        cblas_zdotu_sub( n1ex, mu1, 1, work, 1, &res );
-        R1D += res;
-    }
+    // get the isotropic average
+    // x component
+    for ( i = 0; i < n1ex; i ++ ) mu0[i] = eiH1_t0t1_mu_eg_t0_x[it0*n1ex+i];
+    for ( i = 0; i < n1ex; i ++ ) mu1[i] = mu_eg_t1_x[i];
+    // res=mu1*mu0
+    cblas_zdotu_sub( n1ex, mu1, 1, mu0, 1, &res );
+    R1D += res;
+
+    // y component
+    for ( i = 0; i < n1ex; i ++ ) mu0[i] = eiH1_t0t1_mu_eg_t0_y[it0*n1ex+i];
+    for ( i = 0; i < n1ex; i ++ ) mu1[i] = mu_eg_t1_y[i];
+    // res=mu1*mu0
+    cblas_zdotu_sub( n1ex, mu1, 1, mu0, 1, &res );
+    R1D += res;
+
+    // z component
+    for ( i = 0; i < n1ex; i ++ ) mu0[i] = eiH1_t0t1_mu_eg_t0_z[it0*n1ex+i];
+    for ( i = 0; i < n1ex; i ++ ) mu1[i] = mu_eg_t1_z[i];
+    // res=mu1*mu0
+    cblas_zdotu_sub( n1ex, mu1, 1, mu0, 1, &res );
+    R1D += res;
 
     delete [] mu0;
     delete [] mu1;
-    delete [] work;
 
     return R1D;
 }
@@ -1490,41 +1433,54 @@ int main( int argc, char* argv[] )
      * If you really want to increase performance, you can use sparse matrices and GPU
      */
 
-    // Loop over the trajectory
+    // Loop over the samples
     for ( sample = 0; sample < spectrum.nsamples; sample ++ ){
 
-        fprintf(stderr, "    Now processing sample %d/%d starting at %.2f ps\n", \
-                sample+1, spectrum.nsamples, it0*spectrum.dt ); fflush(stderr);
- 
-        // set all maxes and min
-        it1_max = spectrum.t1t3_npoints - 1 + \
-                  sample*static_cast<int>(spectrum.sample_every/spectrum.dt);
-        it0_min = it1_max - spectrum.t1t3_npoints;
+        // set bounds on time points
+        it0_min = sample*static_cast<int>(spectrum.sample_every/spectrum.dt);
+        it1_max = it0_min + spectrum.t1t3_npoints - 1;
         it2_max = it1_max + static_cast<int>(spectrum.t2/spectrum.dt);
         it3_max = it2_max + spectrum.t1t3_npoints - 1;
-        
-        // get eiH_t1t2
-        for ( it2 = it1_max; it2 <= it2_max; it2 ++ ){
-            if ( spectrum.readEframe(it2) != IR2DOK ) exit(EXIT_FAILURE);
-            if ( spectrum.propigateH1( it1_max, it2, "t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);
-            if ( spectrum.propigateH2( it1_max, it2, "t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);
-        }
 
-        // read in dipoles at t1 and t2
-        if ( spectrum.readDframe(it1_max) != IR2DOK ) exit(EXIT_FAILURE);
-        if ( spectrum.setMUatT("t1")  != IR2DOK ) exit(EXIT_FAILURE);
-        if ( spectrum.readDframe(it2_max) != IR2DOK ) exit(EXIT_FAILURE);
-        if ( spectrum.setMUatT("t2")  != IR2DOK ) exit(EXIT_FAILURE);
+        fprintf(stderr, "    Now processing sample %d/%d with t1 at %.2f ps\n", \
+                sample+1, spectrum.nsamples, it1_max*spectrum.dt ); fflush(stderr);
 
-        // loop over all it0 and get propigated mu
-        for ( it0 = it1_max; it0 > it0_min; it0 -- ){
-            if ( spectrum.readEframe(it0) != IR2DOK ) exit(EXIT_FAILURE);
+        // do it0 to it1
+        // pay attention to order -- propigate H1 to next t1 after propigating mu0
+        spectrum.reset_eiH1("t0-t1");
+        for ( it0 = it1_max; it0 > it0_min; it0-- ){
             if ( spectrum.readDframe(it0) != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.setMUatT("t0")  != IR2DOK ) exit(EXIT_FAILURE);
-            if ( spectrum.geteiH1mu0(it0, it1_max) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.save_eiH1_t0t1_mu0(it0) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.readEframe(it0) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.prop_eiH1(it0,"t0-t1") != IR2DOK ) exit(EXIT_FAILURE);
         }
 
+        // read in dipoles at t1
+        if ( spectrum.readDframe(it1_max) != IR2DOK ) exit(EXIT_FAILURE);
+        if ( spectrum.setMUatT("t1")      != IR2DOK ) exit(EXIT_FAILURE);
+
+        // get linear response function
+        for ( it0 = it0_min; it0 <= it1_max; it0 ++ ){
+            spectrum.R1D[it0] += spectrum.getR1D(it0);
+        }
+        continue;
+        
+        // get eiH_t1t2
+        spectrum.reset_eiH1("t1-t2");
+        spectrum.reset_eiH2("t1-t2");
+        for ( it2 = it1_max; it2 <= it2_max; it2 ++ ){
+            if ( spectrum.prop_eiH1(it2,"t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.prop_eiH2(it2,"t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);
+        }
+
+        // read in dipoles at t2
+        if ( spectrum.readDframe(it2_max) != IR2DOK ) exit(EXIT_FAILURE);
+        if ( spectrum.setMUatT("t2")      != IR2DOK ) exit(EXIT_FAILURE);
+
+        // START HERE
         // now loop over t3 and get the response function
+        /*
         for ( it3 = it2_max; it3 <= it3_max; it3 ++ ){
             if ( spectrum.readEframe(it3) != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.propigateH1( it2_max, it3, "t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);
@@ -1534,77 +1490,13 @@ int main( int argc, char* argv[] )
 
             // these will have to be modified
             for ( it1 = 0; it1 < spectrum.t1t3_npoints; it1 ++ ){
-                /*
+                
                 ndx = (it1)*spectrum.t1t3_npoints + it3;
                 spectrum.R2D_R1[ndx] += spectrum.getR2D_R1(it1, it3);
                 spectrum.R2D_R2[ndx] += spectrum.getR2D_R2(it1, it3);
-                */
-            }
-        }
-        // old stuff
-
-        /*
-        // get frame number, read and save dipole at t0
-        it0 = sample*static_cast<int>(spectrum.sample_every/spectrum.dt);
-        fprintf(stderr, "    Now processing sample %d/%d starting at %.2f ps\n", \
-                sample+1, spectrum.nsamples, it0*spectrum.dt ); fflush(stderr);
-        if ( spectrum.readDframe(it0) != IR2DOK ) exit(EXIT_FAILURE);
-        if ( spectrum.setMUatT("t0")  != IR2DOK ) exit(EXIT_FAILURE);
-
-        // loop over t1
-        it1_max = it0 + spectrum.t1t3_npoints - 1;
-        for ( it1 = it0; it1 <= it1_max; it1 ++ ){
-
-            // read in energy and dipole and propigate one-exciton hamiltonian
-            if ( spectrum.readEframe(it1) != IR2DOK ) exit(EXIT_FAILURE);
-            if ( spectrum.propigateH1(it0, it1, "t0-t1") != IR2DOK ) exit(EXIT_FAILURE);
-            if ( spectrum.readDframe(it1) != IR2DOK ) exit(EXIT_FAILURE);
-            if ( spectrum.setMUatT("t1")  != IR2DOK ) exit(EXIT_FAILURE);
-
-            // get exponential integral and 1D response function
-            spectrum.R1D[it1-it0] += spectrum.getR1D();
-
-            // loop over t2 and get exponential integral
-            it2_max = it1 + static_cast<int>(spectrum.t2/spectrum.dt);
-            for ( it2 = it1; it2 <= it2_max; it2 ++ ){
-                // read in energy and propigate one- and two-exciton hamiltonians
-                if ( spectrum.readEframe(it2) != IR2DOK ) exit(EXIT_FAILURE);
-                #pragma omp parallel num_threads(2)
-                {
-                    int id = omp_get_thread_num();
-                    if ( id == 0 ){ if ( spectrum.propigateH1( it1, it2, "t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);}
-                    if ( id == 1 ){ if ( spectrum.propigateH2( it1, it2, "t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);}
-                }
-            }
-            // read in dipole at t2_max
-            if ( spectrum.readDframe(it2_max) != IR2DOK ) exit(EXIT_FAILURE);
-            if ( spectrum.setMUatT("t2")      != IR2DOK ) exit(EXIT_FAILURE);
-
-            // loop over t3
-            it3_max = it2_max + spectrum.t1t3_npoints - 1;
-            for ( it3 = it2_max; it3 <= it3_max; it3 ++ ){
-                // read in energy and dipole and propigate one- and two-exciton hamiltonian
-                if ( spectrum.readEframe(it3) != IR2DOK ) exit(EXIT_FAILURE);
-                #pragma omp parallel num_threads(2)
-                {
-                    int id = omp_get_thread_num();
-                    if ( id == 0 ){ if ( spectrum.propigateH1( it2_max, it3, "t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);}
-                    if ( id == 1 ){ if ( spectrum.propigateH2( it2_max, it3, "t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);}
-                }
-                if ( spectrum.readDframe(it3) != IR2DOK ) exit(EXIT_FAILURE);
-                if ( spectrum.setMUatT("t3")  != IR2DOK ) exit(EXIT_FAILURE);
-
-                // get 2D response function 
-                ndx = (it1-it0)*spectrum.t1t3_npoints + it3 - it2_max;
                 
-                #pragma omp parallel num_threads(2)
-                {
-                    int id = omp_get_thread_num();
-                    if ( id == 0 ) spectrum.R2D_R1[ndx] += spectrum.getR2D_R1();
-                    if ( id == 1 ) spectrum.R2D_R2[ndx] += spectrum.getR2D_R2();
-                }
             }
-            printProgress( it1-it0+1, spectrum.t1t3_npoints );
+            printProgress( it3-it2_max+1, spectrum.t1t3_npoints );
         }
         */
         cerr << endl;
