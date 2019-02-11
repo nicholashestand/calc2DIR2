@@ -563,6 +563,7 @@ int IR2D::prop_eiH1( int it0, string which )
 
 int IR2D::save_eiH1_t0t1_mu0(int it0 )
 // save eiH1_t0t1*mu(t0) for all t0
+// note, it0 is relative time; it0 = it1-it0
 {
     int i;
     complex<double> *work, *mu;
@@ -1448,10 +1449,10 @@ int main( int argc, char* argv[] )
         // do it0 to it1
         // pay attention to order -- propigate H1 to next t1 after propigating mu0
         spectrum.reset_eiH1("t0-t1");
-        for ( it0 = it1_max; it0 > it0_min; it0-- ){
+        for ( it0 = it1_max; it0 >= it0_min; it0-- ){
             if ( spectrum.readDframe(it0) != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.setMUatT("t0")  != IR2DOK ) exit(EXIT_FAILURE);
-            if ( spectrum.save_eiH1_t0t1_mu0(it0) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.save_eiH1_t0t1_mu0(it1_max-it0) != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.readEframe(it0) != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.prop_eiH1(it0,"t0-t1") != IR2DOK ) exit(EXIT_FAILURE);
         }
@@ -1461,7 +1462,7 @@ int main( int argc, char* argv[] )
         if ( spectrum.setMUatT("t1")      != IR2DOK ) exit(EXIT_FAILURE);
 
         // get linear response function
-        for ( it0 = it0_min; it0 <= it1_max; it0 ++ ){
+        for ( it0 = 0; it0 <= spectrum.t1t3_npoints-1; it0 ++ ){
             spectrum.R1D[it0] += spectrum.getR1D(it0);
         }
         continue;
