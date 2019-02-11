@@ -46,9 +46,6 @@ class IR2D
         complex<double> *eiH1_t0t1;     // one-exciton hamiltonian integrated from time t0 to t1
         complex<double> *eiH1_t1t2;     // one-exciton hamiltonian integrated from time t1 to t2
         complex<double> *eiH1_t2t3;     // one-exciton hamiltonian integrated from time t2 to t3
-        complex<double> *eiH1_t1_last;  // one-exciton hamiltonian at previous t1
-        complex<double> *eiH1_t2_last;  // one-exciton hamiltonian at previous t2
-        complex<double> *eiH1_t3_last;  // one-exciton hamiltonian at previous t3
         double *mu_eg_x;                // ground-to-one-exciton dipole vector
         double *mu_eg_y;                // ground-to-one-exciton dipole vector
         double *mu_eg_z;                // ground-to-one-exciton dipole vector
@@ -67,8 +64,6 @@ class IR2D
         double *H2;                     // two-exciton hamiltonian at current t
         complex<double> *eiH2_t1t2;     // two-exciton hamiltonian integrated from time t1 to t2
         complex<double> *eiH2_t2t3;     // two-exciton hamiltonian integrated from time t2 to t3
-        complex<double> *eiH2_t2_last;  // two-exciton hamiltonian at previous t2
-        complex<double> *eiH2_t3_last;  // two-exciton hamiltonian at previous t2
         double *mu_ce_x;                // ground-to-one-exciton dipole vector
         double *mu_ce_y;                // ground-to-one-exciton dipole vector
         double *mu_ce_z;                // ground-to-one-exciton dipole vector
@@ -81,6 +76,9 @@ class IR2D
         double *mu_ce_t1_z;             // one-to-two-exciton dipole vector at t1 - z component
         double *mu_ce_t2_z;             // one-to-two-exciton dipole vector at t2 - z component
         double *mu_ce_t3_z;             // one-to-two-exciton dipole vector at t3 - z component
+        complex<double> *eiH1_t0t1_mu_eg_t0_x; // propigated dipole at t0 - x component
+        complex<double> *eiH1_t0t1_mu_eg_t0_y; // propigated dipole at t0 - y component
+        complex<double> *eiH1_t0t1_mu_eg_t0_z; // propigated dipole at t0 - z component
         
         // complex constants
         const complex<double> img          = {0.,1.};   
@@ -106,9 +104,12 @@ class IR2D
         int  get2nx( int i, int j );
         int  readDframe( int frame );
         int  setMUatT( string which );
-        int  propigateH1( int t0, int t1, string which );
-        int  propigateH2( int t0, int t1, string which );
+        int  save_eiH1_t0t1_mu0( int it0 );
+        int  prop_eiH1( int it0, string which );
+        int  prop_eiH2( int it0, string which );
         int  doeiH( complex<double> *eiH1, double *H1, int n1ex );
+        int  reset_eiH1( string which );
+        int  reset_eiH2( string which );
         int  writeR1D();
         int  writeR2D();
         int  write1Dfft();
@@ -116,8 +117,8 @@ class IR2D
         int  write2Dout( complex<double> *data, string fn, string which, int n);
         double dot3( vec3 a, vec3 b );
         template<class T> void tellParam( string param, T value );
-        complex<double> getR1D();
-        complex<double> getR2D_R1();
-        complex<double> getR2D_R2();
+        complex<double> getR1D(int it0);
+        complex<double> getR2D_R1(int it0);
+        complex<double> getR2D_R2(int it0);
 };
 #endif

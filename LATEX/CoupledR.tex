@@ -158,7 +158,7 @@ R^{(1)}(t_{1})\sim
 \end{equation}
 If we let \underline{$\vect M$}$[\vect q(t)]=\sum_{m}\vect\epsilon(t)\cdot \vect\mu_{m_{g,1}}[\vect q(t)] \bra{m_{1}}$ be a $1\times N$ vector and if we let \underline{$\vect H$}$^{1}[\vect q(t)]=\sum_{ab}\ket{a_{1}}\bar U_{ab}[\vect q(t)]\bra{b_{1}}$ be a $N\times N$ matrix, we can write the response function in a more compact notation as
 \begin{equation}
-R^{(1)}(t_{1})\sim\left\langle \underbar{\vect{M}}^{T}[\vect q(t_{1})]\exp\left[i/\hbar\int_{0}^{t_{1}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}} [\vect q(0)] \right\rangle_{b}.
+R^{(1)}(t_{1})\sim\left\langle \underbar{\vect{M}}^{T}[\vect q(t_{1})]\exp\left[-i/\hbar\int_{0}^{t_{1}}\underbar{\vect{H}}^{1}[\vect q(\tau)]d\tau\right] \underbar{\vect{M}} [\vect q(0)] \right\rangle_{b}.
 \end{equation}
 This equation can be evaluated numerically in a straightforward manner.
 \Cref{fig:fd1} shows the two-sided Feynman diagram corresponding to $R^{(1)}$.
@@ -734,6 +734,42 @@ The non-rephasing two quantum I pathway is given by the two-exciton pathway of $
 \end{split}
 \end{equation}
 The non-rephasing two quantum II pathway is given by the minus complex conjugate of the two-exciton pathway of $R_{3}^{(3)}$.\cite{Hamm2011}
+
+\clearpage
+\section{Numerical Estimation of Exponential Integrals}
+Following Jansen and Knoester,\cite{Jansen2006} the exponential integral operators, or propigators, can be estimated numerically by breaking them into a series of short intervals, during which the Hamiltonian is assumed constant
+\begin{equation}
+\begin{split}
+\exp\left[-i/\hbar\int_{t_{0}}^{t_{1}}H(\tau)d\tau\right]\approx&
+\exp\left[-\frac{i}{\hbar}H(t_{1}-\Delta t)\Delta t\right]
+\exp\left[-\frac{i}{\hbar}H(t_{1}-2\Delta t)\Delta t\right]
+\ldots\\
+&\exp\left[-\frac{i}{\hbar}H(t_{0}+\Delta t)\Delta t\right]
+\exp\left[-\frac{i}{\hbar}H(t_{0})\Delta t\right].
+\end{split}
+\end{equation}
+The complex conjugate is given by the ususal rules of matrix multiplication
+\begin{equation}
+\begin{split}
+\left(\exp\left[-i/\hbar\int_{t_{0}}^{t_{1}}H(\tau)d\tau\right]\right)^{*}\approx&
+\left(\exp\left[-\frac{i}{\hbar}H(t_{1}-\Delta t)\Delta t\right]
+\exp\left[-\frac{i}{\hbar}H(t_{1}-2\Delta t)\Delta t\right]
+\ldots\right.\\
+&\left.\exp\left[-\frac{i}{\hbar}H(t_{0}+\Delta t)\Delta t\right]
+\exp\left[-\frac{i}{\hbar}H(t_{0})\Delta t\right]\right)^{*}\\
+=&\exp\left[\frac{i}{\hbar}H(t_{0})\Delta t\right]
+\exp\left[\frac{i}{\hbar}H(t_{0}+\Delta t)\Delta t\right]
+\ldots\\
+&
+\exp\left[\frac{i}{\hbar}H(t_{1}-2\Delta t)\Delta t\right]
+\exp\left[\frac{i}{\hbar}H(t_{1}-\Delta t)\Delta t\right]\\
+\approx&
+\exp\left[i/\hbar\int_{t_{0}}^{t_{1}}H(\tau)d\tau\right]
+\end{split}
+\end{equation}
+where we have taken into account the fact that the Hamiltonian is symmetric.
+
+
 \clearpage
 \bibliography{/home/hestand/Documents/Research/Bibliography/HestandBib}
 \bibliographystyle{unsrt}
