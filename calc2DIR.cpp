@@ -740,23 +740,22 @@ complex<double> IR2D::getR1D(int it0)
 complex<double> IR2D::getR2D_R1(int it0)
 // return the third order rephasing response function
 {
-    complex<double> *mu0_eg, *mu1_eg, *mu2_eg, *mu3_eg, *work1a, *work1b;
-    complex<double> *mu1_ce, *mu2_ce, *mu3_ce, *work2a, *work2b, *work2c;
-    complex<double> R2D, work0a, work0b, result;
+    complex<double> *mu0_eg, *mu1_eg, *mu2_eg, *mu3_eg, *work1a, *work1b, *work1c;
+    complex<double> *mu2_ce, *mu3_ce, *work2a, *work2b;
+    complex<double> R2D, work0a, work0b;
     int i, k;
 
     mu0_eg = new complex<double>[n1ex];
     mu1_eg = new complex<double>[n1ex];
     mu2_eg = new complex<double>[n1ex];
     mu3_eg = new complex<double>[n1ex];
-    mu1_ce = new complex<double>[n1ex*n2ex];
     mu2_ce = new complex<double>[n1ex*n2ex];
     mu3_ce = new complex<double>[n1ex*n2ex];
     work1a = new complex<double>[n1ex];
     work1b = new complex<double>[n1ex];
+    work1c = new complex<double>[n1ex];
     work2a = new complex<double>[n2ex];
     work2b = new complex<double>[n2ex];
-    work2c = new complex<double>[n2ex];
 
     R2D = complex_zero;
 
@@ -768,7 +767,6 @@ complex<double> IR2D::getR2D_R1(int it0)
             for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_x[i];
             for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_x[i];
             for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_x[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu1_ce[i] = mu_ce_t1_x[i];
             for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_x[i];
             for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_x[i];
         }
@@ -777,7 +775,6 @@ complex<double> IR2D::getR2D_R1(int it0)
             for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_y[i];
             for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_y[i];
             for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_y[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu1_ce[i] = mu_ce_t1_y[i];
             for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_y[i];
             for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_y[i];
         }
@@ -786,7 +783,6 @@ complex<double> IR2D::getR2D_R1(int it0)
             for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_z[i];
             for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_z[i];
             for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_z[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu1_ce[i] = mu_ce_t1_z[i];
             for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_z[i];
             for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_z[i];
         }
@@ -845,43 +841,37 @@ complex<double> IR2D::getR2D_R1(int it0)
         // ############################################################
 
         // start matrix algebra from right
-        // work1a=conj(eiH1_t2t3)*mu0_eg
-        // since H is symmetric, so is eiH1_t2t3; so CblasConjTrans just
-        // gives the conjugate
-        cblas_zgemv( CblasRowMajor, CblasConjTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t2t3, n1ex, mu0_eg, 1, \
-                     &complex_zero, work1a, 1 );
-        // work1b=conj(eiH1_t1t2)*work1a
-        cblas_zgemv( CblasRowMajor, CblasConjTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t1t2, n1ex, work1a, 1, \
-                     &complex_zero, work1b, 1 );
-        // work1a=conj(eiH1_t0t1)*work1b
-        cblas_zgemv( CblasRowMajor, CblasConjTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t0t1, n1ex, work1b, 1, \
-                     &complex_zero, work1a, 1 );
-        // work2a=mu3_ce*work1a
-        cblas_zgemv( CblasRowMajor, CblasTrans, n1ex, n2ex,\
-                     &complex_one, mu3_ce, n2ex, work1a, 1, \
-                     &complex_zero, work2a, 1 );
-
-        // now do matrix algebra from left
-        // work1a=mu1_eg*eiH1_t1t2
-        cblas_zgemv( CblasRowMajor, CblasTrans, n1ex, n1ex,\
+        // work1a=eiH1_t1t2*mu1_eg
+        cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
                      &complex_one, eiH1_t1t2, n1ex, mu1_eg, 1, \
                      &complex_zero, work1a, 1 );
-        // work2b=work1a*mu2_ce
+        // work2a=mu2_ce*work1a
         cblas_zgemv( CblasRowMajor, CblasTrans, n1ex, n2ex,\
                      &complex_one, mu2_ce, n2ex, work1a, 1, \
+                     &complex_zero, work2a, 1 );
+        // work2b=eiH2_t2t3*work2a
+        cblas_zgemv( CblasRowMajor, CblasNoTrans, n2ex, n2ex,\
+                     &complex_one, eiH2_t2t3, n2ex, work2a, 1, \
                      &complex_zero, work2b, 1 );
+        // work1c=mu3_ce*work2b
+        cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n2ex,\
+                     &complex_one, mu3_ce, n2ex, work2b, 1, \
+                     &complex_zero, work1c, 1 );
 
-        // now meet in the middle to get the result
-        // work2c=work2b*eiH2_t2t3
-        cblas_zgemv( CblasRowMajor, CblasTrans, n2ex, n2ex,\
-                     &complex_one, eiH2_t2t3, n2ex, work2b, 1, \
-                     &complex_zero, work2c, 1 );
-
-        // work0a=work2c*work2a
-        cblas_zdotu_sub( n2ex, work2c, 1, work2a, 1, &work0a );
+        // now do matrix algebra from the left
+        // work1a=eiH1_t1t2*mu0_eg
+        cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                     &complex_one, eiH1_t1t2, n1ex, mu0_eg, 1, \
+                     &complex_zero, work1a, 1 );
+        // work1b=eiH1_t2t3*work1a
+        cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                     &complex_one, eiH1_t2t3, n1ex, work1a, 1, \
+                     &complex_zero, work1b, 1 );
+        
+        // now meet in the middle and combine the result
+        // work0a = conj(work1b)*work1c
+        for ( i = 0; i < n1ex; i ++ ) work1a[i] = conj(work1b[i]);
+        cblas_zdotu_sub( n1ex, work1a, 1, work1c, 1, &work0a );
         R2D    -= work0a;
         // ############################################################
     }
@@ -890,38 +880,36 @@ complex<double> IR2D::getR2D_R1(int it0)
     delete [] mu1_eg;
     delete [] mu2_eg;
     delete [] mu3_eg;
-    delete [] mu1_ce;
     delete [] mu2_ce;
     delete [] mu3_ce;
     delete [] work1a;
     delete [] work1b;
+    delete [] work1c;
     delete [] work2a;
     delete [] work2b;
-    delete [] work2c;
 
     return R2D;
 }
 
-complex<double> IR2D::getR2D_R2()
-// return the third order non-rephasing response function
+complex<double> IR2D::getR2D_R2(int it0)
+// return the third order rephasing response function
 {
-    complex<double> *mu0_eg, *mu1_eg, *mu2_eg, *mu3_eg, *work1a, *work1b;
-    complex<double> *mu1_ce, *mu2_ce, *mu3_ce, *work2a, *work2b, *work2c;
-    complex<double> R2D, work0a, work0b, result;
+    complex<double> *mu0_eg, *mu1_eg, *mu2_eg, *mu3_eg, *work1a, *work1b, *work1c;
+    complex<double> *mu2_ce, *mu3_ce, *work2a, *work2b;
+    complex<double> R2D, work0a, work0b;
     int i, k;
 
     mu0_eg = new complex<double>[n1ex];
     mu1_eg = new complex<double>[n1ex];
     mu2_eg = new complex<double>[n1ex];
     mu3_eg = new complex<double>[n1ex];
-    mu1_ce = new complex<double>[n1ex*n2ex];
     mu2_ce = new complex<double>[n1ex*n2ex];
     mu3_ce = new complex<double>[n1ex*n2ex];
     work1a = new complex<double>[n1ex];
     work1b = new complex<double>[n1ex];
+    work1c = new complex<double>[n1ex];
     work2a = new complex<double>[n2ex];
     work2b = new complex<double>[n2ex];
-    work2c = new complex<double>[n2ex];
 
     R2D = complex_zero;
 
@@ -929,29 +917,26 @@ complex<double> IR2D::getR2D_R2()
     // all pulses have the same parallelization
     for ( k = 0; k < 3; k ++ ){
         if ( k == 0 ){
-            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = mu_eg_t0_x[i];
+            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_x[it0*n1ex+i];
             for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_x[i];
             for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_x[i];
             for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_x[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu1_ce[i] = mu_ce_t1_x[i];
             for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_x[i];
             for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_x[i];
         }
         else if ( k == 1 ){
-            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = mu_eg_t0_y[i];
+            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_y[it0*n1ex+i];
             for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_y[i];
             for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_y[i];
             for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_y[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu1_ce[i] = mu_ce_t1_y[i];
             for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_y[i];
             for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_y[i];
         }
         else if ( k == 2 ){
-            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = mu_eg_t0_z[i];
+            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_z[it0*n1ex+i];
             for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_z[i];
             for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_z[i];
             for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_z[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu1_ce[i] = mu_ce_t1_z[i];
             for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_z[i];
             for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_z[i];
         }
@@ -959,55 +944,47 @@ complex<double> IR2D::getR2D_R2()
         // ground state bleach -- eq (30)
         // ############################################################
 
-        // start matrix algebra from right
-        // work1a=eiH1_t0t1*mu0_eg
+        // start matrix algebra from left
+        // work1a=eiH1_t2t3*mu2_eg
         cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t0t1, n1ex, mu0_eg, 1, \
+                     &complex_one, eiH1_t2t3, n1ex, mu2_eg, 1, \
                      &complex_zero, work1a, 1 );
-        // work0a=mu1_eg*work1a
-        cblas_zdotu_sub( n1ex, mu1_eg, 1, work1a, 1, &work0a );
+        // work0a=mu3_eg*work1a
+        cblas_zdotu_sub( n1ex, mu3_eg, 1, work1a, 1, &work0a );
 
-        // now do matrix algebra from left
-        // work1a=mu3_eg*eiH1_t2t3
-        cblas_zgemv( CblasRowMajor, CblasTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t2t3, n1ex, mu3_eg, 1, \
-                     &complex_zero, work1a, 1 );
-        // work0b=work1a*mu2_eg
-        cblas_zdotu_sub( n1ex, work1a, 1, mu2_eg, 1, &work0b );
+        // now do matrix algebra from right
+        // work0b=mu0_eg*mu1_eg
+        cblas_zdotu_sub( n1ex, mu0_eg, 1, mu1_eg, 1, &work0b );
 
         // now meet in the middle to get the result
         R2D   += work0b*work0a;
         // ############################################################
 
-        
+
         // stimulated emission -- eq (31)
         // ############################################################
-
-        // start matrix algebra from right
-        // work1a=eiH1_t2t3*mu0_eg
+ 
+        // now do matrix algebra from right
+        // work1a=eiH1_t1t2*mu0_eg
         cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t2t3, n1ex, mu0_eg, 1, \
+                     &complex_one, eiH1_t1t2, n1ex, mu0_eg, 1, \
                      &complex_zero, work1a, 1 );
-        // work1b=eiH1_t1t2*work1a
+        // work1b=eiH1_t2t3*work1a
         cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t1t2, n1ex, work1a, 1, \
+                     &complex_one, eiH1_t2t3, n1ex, work1a, 1, \
                      &complex_zero, work1b, 1 );
-        // work1a=eiH1_t0t1*work1b
-        cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t0t1, n1ex, work1b, 1, \
-                     &complex_zero, work1a, 1 );
-        // work0a=mu3_eg*work1a
-        cblas_zdotu_sub( n1ex, mu3_eg, 1, work1a, 1, &work0a );
+        // work0b=work1b*mu3_eg
+        cblas_zdotu_sub( n1ex, work1b, 1, mu3_eg, 1, &work0b );
+
 
         // now do matrix algebra from left
-        // work1a=mu1_eg*conj(eiH1_t1t2)
-        cblas_zgemv( CblasRowMajor, CblasConjTrans, n1ex, n1ex,\
+        // work1a=eiH1_t1t2*mu1_eg
+        cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
                      &complex_one, eiH1_t1t2, n1ex, mu1_eg, 1, \
                      &complex_zero, work1a, 1 );
-        // work0b=work1a*mu2_eg
-        cblas_zdotu_sub( n1ex, work1a, 1, mu2_eg, 1, &work0b );
-    
-        // now meet in the middle to get the result
+        // work0a=conj(work1a)*mu2_eg
+        for ( int i = 0; i < n1ex; i ++ ) work1b[i] = conj(work1a[i]);
+        cblas_zdotu_sub( n1ex, work1b, 1, mu2_eg, 1, &work0a );
         R2D   += work0b*work0a;
         // ############################################################
 
@@ -1016,65 +993,55 @@ complex<double> IR2D::getR2D_R2()
         // ############################################################
 
         // start matrix algebra from right
-        // work1a=conj(eiH1_t2t3)*mu1_eg
-        // since H is symmetric, so is eiH1_t2t3; so CblasConjTrans just
-        // gives the conjugate
-        cblas_zgemv( CblasRowMajor, CblasConjTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t2t3, n1ex, mu1_eg, 1, \
+        // work1a=eiH1_t1t2*mu0_eg
+        cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                     &complex_one, eiH1_t1t2, n1ex, mu0_eg, 1, \
                      &complex_zero, work1a, 1 );
-        // work1b=conj(eiH1_t1t2)*work1a
-        cblas_zgemv( CblasRowMajor, CblasConjTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t1t2, n1ex, work1a, 1, \
-                     &complex_zero, work1b, 1 );
-        // work2a=mu3_ce*work1b
+        // work2a=mu2_ce*work1a
         cblas_zgemv( CblasRowMajor, CblasTrans, n1ex, n2ex,\
-                     &complex_one, mu3_ce, n2ex, work1b, 1, \
+                     &complex_one, mu2_ce, n2ex, work1a, 1, \
                      &complex_zero, work2a, 1 );
-
-        // now do matrix algebra from left
-        // work1a=mu0_eg*eiH1_t0t1
-        cblas_zgemv( CblasRowMajor, CblasTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t0t1, n1ex, mu0_eg, 1, \
-                     &complex_zero, work1a, 1 );
-        // work1b=work1a*eiH1_t1t2
-        cblas_zgemv( CblasRowMajor, CblasTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t1t2, n1ex, work1a, 1, \
-                     &complex_zero, work1b, 1 );
-        
-        // work2b=work1b*mu2_ce
-        cblas_zgemv( CblasRowMajor, CblasTrans, n1ex, n2ex,\
-                     &complex_one, mu2_ce, n2ex, work1b, 1, \
+        // work2b=eiH2_t2t3*work2a
+        cblas_zgemv( CblasRowMajor, CblasNoTrans, n2ex, n2ex,\
+                     &complex_one, eiH2_t2t3, n2ex, work2a, 1, \
                      &complex_zero, work2b, 1 );
+        // work1c=mu3_ce*work2b
+        cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n2ex,\
+                     &complex_one, mu3_ce, n2ex, work2b, 1, \
+                     &complex_zero, work1c, 1 );
 
-        // now meet in the middle to get the result
-        // work2c=work2b*eiH2_t2t3
-        cblas_zgemv( CblasRowMajor, CblasTrans, n2ex, n2ex,\
-                     &complex_one, eiH2_t2t3, n2ex, work2b, 1, \
-                     &complex_zero, work2c, 1 );
-        // work0a=work2c*work2a
-        cblas_zdotu_sub( n2ex, work2c, 1, work2a, 1, &work0a );
+        // now do matrix algebra from the left
+        // work1a=eiH1_t1t2*mu1_eg
+        cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                     &complex_one, eiH1_t1t2, n1ex, mu1_eg, 1, \
+                     &complex_zero, work1a, 1 );
+        // work1b=eiH1_t2t3*work1a
+        cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                     &complex_one, eiH1_t2t3, n1ex, work1a, 1, \
+                     &complex_zero, work1b, 1 );
+
+        // now meet in the middle and combine the results
+        // work0a = conj(work1b)*work1c
+        for ( i = 0; i < n1ex; i ++ ) work1a[i] = conj(work1b[i]);
+        cblas_zdotu_sub( n1ex, work1a, 1, work1c, 1, &work0a );
         R2D    -= work0a;
         // ############################################################
-        
     }
 
     delete [] mu0_eg;
     delete [] mu1_eg;
     delete [] mu2_eg;
     delete [] mu3_eg;
-    delete [] mu1_ce;
     delete [] mu2_ce;
     delete [] mu3_ce;
     delete [] work1a;
     delete [] work1b;
+    delete [] work1c;
     delete [] work2a;
     delete [] work2b;
-    delete [] work2c;
 
     return R2D;
 }
-
-
 
 int IR2D::writeR1D()
 // write R1D to file
@@ -1456,7 +1423,7 @@ int main( int argc, char* argv[] )
         if ( spectrum.setMUatT("t1")      != IR2DOK ) exit(EXIT_FAILURE);
 
         // get linear response function
-        for ( it0 = 0; it0 <= spectrum.t1t3_npoints-1; it0 ++ ){
+        for ( it0 = 0; it0 < spectrum.t1t3_npoints; it0 ++ ){
             spectrum.R1D[it0] += spectrum.getR1D(it0);
         }
         
