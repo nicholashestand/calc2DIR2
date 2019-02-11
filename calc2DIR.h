@@ -118,7 +118,7 @@ class IR2D
         double dot3( vec3 a, vec3 b );
         template<class T> void tellParam( string param, T value );
         complex<double> getR1D(int it0);
-        complex<double> getR2D_R1();
-        complex<double> getR2D_R2();
+        complex<double> getR2D_R1(int it0);
+        complex<double> getR2D_R2(int it0);
 };
 #endif

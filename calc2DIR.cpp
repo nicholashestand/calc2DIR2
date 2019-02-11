@@ -737,7 +737,7 @@ complex<double> IR2D::getR1D(int it0)
     return R1D;
 }
 
-complex<double> IR2D::getR2D_R1()
+complex<double> IR2D::getR2D_R1(int it0)
 // return the third order rephasing response function
 {
     complex<double> *mu0_eg, *mu1_eg, *mu2_eg, *mu3_eg, *work1a, *work1b;
@@ -764,7 +764,7 @@ complex<double> IR2D::getR2D_R1()
     // all pulses have the same parallelization
     for ( k = 0; k < 3; k ++ ){
         if ( k == 0 ){
-            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = mu_eg_t0_x[i];
+            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_x[it0*n1ex+i];
             for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_x[i];
             for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_x[i];
             for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_x[i];
@@ -773,7 +773,7 @@ complex<double> IR2D::getR2D_R1()
             for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_x[i];
         }
         else if ( k == 1 ){
-            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = mu_eg_t0_y[i];
+            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_y[it0*n1ex+i];
             for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_y[i];
             for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_y[i];
             for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_y[i];
@@ -782,7 +782,7 @@ complex<double> IR2D::getR2D_R1()
             for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_y[i];
         }
         else if ( k == 2 ){
-            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = mu_eg_t0_z[i];
+            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_z[it0*n1ex+i];
             for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_z[i];
             for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_z[i];
             for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_z[i];
@@ -803,11 +803,8 @@ complex<double> IR2D::getR2D_R1()
         cblas_zdotu_sub( n1ex, mu3_eg, 1, work1a, 1, &work0a );
 
         // now do matrix algebra from left
-        // work1a=mu0_eg*conj(eiH1_t0t1)
-        cblas_zgemv( CblasRowMajor, CblasConjTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t0t1, n1ex, mu0_eg, 1, \
-                     &complex_zero, work1a, 1 );
-        // work0b=work1a*mu1_eg
+        // work0b=conj(mu0_eg)*mu1_eg
+        for ( int i = 0; i < n1ex; i ++ ) work1a[i] = conj(mu0_eg[i]);
         cblas_zdotu_sub( n1ex, work1a, 1, mu1_eg, 1, &work0b );
 
         // now meet in the middle to get the result
@@ -819,27 +816,24 @@ complex<double> IR2D::getR2D_R1()
         // ############################################################
 
         // start matrix algebra from right
-        // work1a=eiH1_t2t3*mu1_eg
+        // work1a=eiH1_t1t2*mu1_eg
         cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t2t3, n1ex, mu1_eg, 1, \
+                     &complex_one, eiH1_t1t2, n1ex, mu1_eg, 1, \
                      &complex_zero, work1a, 1 );
-        // work1b=eiH1_t1t2*work1a
+        // work1b=eiH1_t2t3*work1a
         cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t1t2, n1ex, work1a, 1, \
+                     &complex_one, eiH1_t2t3, n1ex, work1a, 1, \
                      &complex_zero, work1b, 1 );
         // work0a=mu3_eg*work1b
         cblas_zdotu_sub( n1ex, mu3_eg, 1, work1b, 1, &work0a );
 
         // now do matrix algebra from left
-        // work1a=mu0_eg*conj(eiH1_t0t1)
-        cblas_zgemv( CblasRowMajor, CblasConjTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t0t1, n1ex, mu0_eg, 1, \
+        // work1a=eiH1_t1t2*mu0_eg
+        cblas_zgemv( CblasRowMajor, CblasNoTrans, n1ex, n1ex,\
+                     &complex_one, eiH1_t1t2, n1ex, mu0_eg, 1, \
                      &complex_zero, work1a, 1 );
-        // work1b=work1a*conj(eiH1_t1t2)
-        cblas_zgemv( CblasRowMajor, CblasConjTrans, n1ex, n1ex,\
-                     &complex_one, eiH1_t1t2, n1ex, work1a, 1, \
-                     &complex_zero, work1b, 1 );
-        // work0b=work1b*mu2_eg
+        // work0b=conj(work1a)*mu2_eg
+        for ( int i = 0; i < n1ex; i ++ ) work1b[i] = conj(work1a[i]);
         cblas_zdotu_sub( n1ex, work1b, 1, mu2_eg, 1, &work0b );
     
         // now meet in the middle to get the result
@@ -1453,7 +1447,7 @@ int main( int argc, char* argv[] )
             if ( spectrum.readDframe(it0) != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.setMUatT("t0")  != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.save_eiH1_t0t1_mu0(it1_max-it0) != IR2DOK ) exit(EXIT_FAILURE);
-            if ( spectrum.readEframe(it0) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( it0 == it0_min ) continue; // don't propigate the last frame
             if ( spectrum.prop_eiH1(it0,"t0-t1") != IR2DOK ) exit(EXIT_FAILURE);
         }
 
@@ -1465,12 +1459,11 @@ int main( int argc, char* argv[] )
         for ( it0 = 0; it0 <= spectrum.t1t3_npoints-1; it0 ++ ){
             spectrum.R1D[it0] += spectrum.getR1D(it0);
         }
-        continue;
         
         // get eiH_t1t2
         spectrum.reset_eiH1("t1-t2");
         spectrum.reset_eiH2("t1-t2");
-        for ( it2 = it1_max; it2 <= it2_max; it2 ++ ){
+        for ( it2 = it1_max; it2 < it2_max; it2 ++ ){
             if ( spectrum.prop_eiH1(it2,"t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.prop_eiH2(it2,"t1-t2" ) != IR2DOK ) exit(EXIT_FAILURE);
         }
@@ -1479,27 +1472,23 @@ int main( int argc, char* argv[] )
         if ( spectrum.readDframe(it2_max) != IR2DOK ) exit(EXIT_FAILURE);
         if ( spectrum.setMUatT("t2")      != IR2DOK ) exit(EXIT_FAILURE);
 
-        // START HERE
         // now loop over t3 and get the response function
-        /*
+        spectrum.reset_eiH1("t2-t3");
+        spectrum.reset_eiH2("t2-t3");
         for ( it3 = it2_max; it3 <= it3_max; it3 ++ ){
-            if ( spectrum.readEframe(it3) != IR2DOK ) exit(EXIT_FAILURE);
-            if ( spectrum.propigateH1( it2_max, it3, "t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);
-            if ( spectrum.propigateH2( it2_max, it3, "t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.readDframe(it3) != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.setMUatT("t3")  != IR2DOK ) exit(EXIT_FAILURE);
-
-            // these will have to be modified
-            for ( it1 = 0; it1 < spectrum.t1t3_npoints; it1 ++ ){
-                
-                ndx = (it1)*spectrum.t1t3_npoints + it3;
-                spectrum.R2D_R1[ndx] += spectrum.getR2D_R1(it1, it3);
-                spectrum.R2D_R2[ndx] += spectrum.getR2D_R2(it1, it3);
-                
+            // get response function for all it0
+            for ( it0 = 0; it0 < spectrum.t1t3_npoints-1; it0 ++ ){
+                ndx = it0*spectrum.t1t3_npoints + it3;
+                spectrum.R2D_R1[ndx] += spectrum.getR2D_R1(it0);
+                spectrum.R2D_R2[ndx] += spectrum.getR2D_R2(it0);
             }
             printProgress( it3-it2_max+1, spectrum.t1t3_npoints );
+            if ( it3 == it3_max ) continue; // dont propigate the last frame
+            if ( spectrum.prop_eiH1(it3,"t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);
+            if ( spectrum.prop_eiH2(it3,"t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);
         }
-        */
         cerr << endl;
     }
 
