@@ -115,6 +115,10 @@ class IR2D
         int  write1Dfft();
         int  write2DRabs();
         int  write2Dout( complex<double> *data, string fn, string which, int n);
+        int  getMU4pol( complex<double> *mu0_eg, complex<double> *mu1_eg,\
+                        complex<double> *mu2_eg, complex<double> *mu3_eg,\
+                        complex<double> *mu2_ce, complex<double> *mu3_ce,\
+                        int it0, int k );
         double dot3( vec3 a, vec3 b );
         template<class T> void tellParam( string param, T value );
         complex<double> getR1D(int it0);

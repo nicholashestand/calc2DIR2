@@ -462,7 +462,7 @@ Each diagram contains both the one-exciton and two-exciton pathways discussed ab
 \caption{Two-sided Feynman diagrams for the third-order response function, as indicated.
 For each $R^{(3)}$ the left diagram shows the one-exciton pathway and the right diagram shows the two-exciton pathway.
 Note that we have labeled all doubly excited states as \bra{m_{1},k_{1}} indicating that two different chromophores are singly excited.
-It is also possible that a single cromophore is doubly excited \bra{m_{2}}, but we have omitted this in the diagram for brevity.
+It is also possible that a single chromophore is doubly excited \bra{m_{2}}, but we have omitted this in the diagram for brevity.
 Moreover, the doubly excited state is indicated to always return to the original singly excited state \bra{m_{1}}, but  it is also possible to return to a different singly excited state \bra{k_{1}}.
 This is also omitted for brevity.}\label{fig:fd3}
 \end{figure}
@@ -737,7 +737,7 @@ The non-rephasing two quantum II pathway is given by the minus complex conjugate
 
 \clearpage
 \section{Numerical Estimation of Exponential Integrals}
-Following Jansen and Knoester,\cite{Jansen2006} the exponential integral operators, or propigators, can be estimated numerically by breaking them into a series of short intervals, during which the Hamiltonian is assumed constant
+Following Jansen and Knoester,\cite{Jansen2006} the exponential integral operators, or propagators, can be estimated numerically by breaking them into a series of short intervals, during which the Hamiltonian is assumed constant
 \begin{equation}
 \begin{split}
 \exp\left[-i/\hbar\int_{t_{0}}^{t_{1}}H(\tau)d\tau\right]\approx&
@@ -748,7 +748,7 @@ Following Jansen and Knoester,\cite{Jansen2006} the exponential integral operato
 \exp\left[-\frac{i}{\hbar}H(t_{0})\Delta t\right].
 \end{split}
 \end{equation}
-The complex conjugate is given by the ususal rules of matrix multiplication
+The complex conjugate is given by the usual rules of matrix multiplication
 \begin{equation}
 \begin{split}
 \left(\exp\left[-i/\hbar\int_{t_{0}}^{t_{1}}H(\tau)d\tau\right]\right)^{*}\approx&
@@ -769,6 +769,44 @@ The complex conjugate is given by the ususal rules of matrix multiplication
 \end{equation}
 where we have taken into account the fact that the Hamiltonian is symmetric.
 
+\clearpage
+\section{Isotropically Averaged Spectrum}
+If we assume that our system corresponds to one configuration of an isotropic average, we can calculate the 2DIR spectrum for the isotropically averaged system by taking averages over the different combinations of laser pulse polarizations.
+Following Hochstrasser\cite{Hochstrasser2001} and Jansen\cite{Jansen2006} we can write
+\begin{equation}
+\begin{split}
+\left\langle I(\omega_{1},\omega_{3},t_{2})_{ZZZZ}\right\rangle=
+\sum_{i,j={X,Y,Z}}
+&\frac{1}{5}I(\omega_{1},\omega_{3},t_{2})_{iiii}+
+\frac{1}{15}I(\omega_{1},\omega_{3},t_{2})_{iijj}+\\
+&\frac{1}{15}I(\omega_{1},\omega_{3},t_{2})_{ijij}+
+\frac{1}{15}I(\omega_{1},\omega_{3},t_{2})_{ijji}.
+\end{split}
+\end{equation}
+This is the isotropically averaged parallel polarized spectrum.
+Note that in Hochstrasser's paper, he is averaging over the molecular reference frame, while we are averaging over the laboratory frame.
+The result should be independent of the reference frame.
+Likewise, we can find the isotropically averaged signals
+\begin{equation}
+\begin{split}
+\left\langle I(\omega_{1},\omega_{3},t_{2})_{ZZXX}\right\rangle=
+\sum_{i,j={X,Y,Z}}
+&\frac{1}{15}I(\omega_{1},\omega_{3},t_{2})_{iiii}+
+\frac{2}{15}I(\omega_{1},\omega_{3},t_{2})_{iijj}+\\
+&-\frac{1}{30}I(\omega_{1},\omega_{3},t_{2})_{ijij}+
+-\frac{1}{30}I(\omega_{1},\omega_{3},t_{2})_{ijji}.
+\end{split}
+\end{equation}
+This is the isotropically averaged perpendicularly polarized spectrum.
+\begin{equation}
+\begin{split}
+-\frac{1}{2}\left\langle I(\omega_{1},\omega_{3},t_{2})_{ZXXZ} - I(\omega_{1},\omega_{3},t_{2})_{ZXZX}\right\rangle=&\\
+\sum_{i,j={X,Y,Z}}
+\frac{5}{60}I(\omega_{1},\omega_{3},t_{2})_{ijij}
+&-\frac{5}{60}I(\omega_{1},\omega_{3},t_{2})_{ijji}.
+\end{split}
+\end{equation}
+This is the isotropically averaged cross polarized spectrum.
 
 \clearpage
 \bibliography{/home/hestand/Documents/Research/Bibliography/HestandBib}

@@ -61,13 +61,10 @@ IR2D::IR2D( string _inpf_ )
     mu_ce_x         = new double[n1ex*n2ex]();
     mu_ce_y         = new double[n1ex*n2ex]();
     mu_ce_z         = new double[n1ex*n2ex]();
-    mu_ce_t1_x      = new double[n1ex*n2ex]();
     mu_ce_t2_x      = new double[n1ex*n2ex]();
     mu_ce_t3_x      = new double[n1ex*n2ex]();
-    mu_ce_t1_y      = new double[n1ex*n2ex]();
     mu_ce_t2_y      = new double[n1ex*n2ex]();
     mu_ce_t3_y      = new double[n1ex*n2ex]();
-    mu_ce_t1_z      = new double[n1ex*n2ex]();
     mu_ce_t2_z      = new double[n1ex*n2ex]();
     mu_ce_t3_z      = new double[n1ex*n2ex]();
 
@@ -118,13 +115,10 @@ IR2D::~IR2D()
     delete [] mu_ce_x;
     delete [] mu_ce_y;
     delete [] mu_ce_z;
-    delete [] mu_ce_t1_x;
     delete [] mu_ce_t2_x;
     delete [] mu_ce_t3_x;
-    delete [] mu_ce_t1_y;
     delete [] mu_ce_t2_y;
     delete [] mu_ce_t3_y;
-    delete [] mu_ce_t1_z;
     delete [] mu_ce_t2_z;
     delete [] mu_ce_t3_z;
 
@@ -329,9 +323,6 @@ int IR2D::setMUatT( string which )
         memcpy( mu_eg_t1_x, mu_eg_x, sizeof(double)*n1ex );
         memcpy( mu_eg_t1_y, mu_eg_y, sizeof(double)*n1ex );
         memcpy( mu_eg_t1_z, mu_eg_z, sizeof(double)*n1ex );
-        memcpy( mu_ce_t1_x, mu_ce_x, sizeof(double)*n1ex*n2ex );
-        memcpy( mu_ce_t1_y, mu_ce_y, sizeof(double)*n1ex*n2ex );
-        memcpy( mu_ce_t1_z, mu_ce_z, sizeof(double)*n1ex*n2ex );
     }
     else if ( which.compare("t2") == 0 ){
         memcpy( mu_eg_t2_x, mu_eg_x, sizeof(double)*n1ex );
@@ -737,6 +728,191 @@ complex<double> IR2D::getR1D(int it0)
     return R1D;
 }
 
+int IR2D::getMU4pol( complex<double> *mu0_eg, complex<double> *mu1_eg,\
+                     complex<double> *mu2_eg, complex<double> *mu3_eg,\
+                     complex<double> *mu2_ce, complex<double> *mu3_ce,\
+                     int it0, int k )
+// return the relevant set of dipole matrices for a given polarization combination
+{
+    int i;
+
+    if ( k == 0 ){ // XXXX
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_x[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_x[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_x[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_x[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_x[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_x[i];
+    }
+    else if ( k == 1 ){ // YYYY
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_y[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_y[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_y[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_y[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_y[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_y[i];
+    }
+    else if ( k == 2 ){ // ZZZZ
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_z[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_z[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_z[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_z[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_z[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_z[i];
+    }
+    else if ( k == 3 ){ // XXYY
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_x[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_x[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_y[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_y[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_y[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_y[i];
+    }
+    else if ( k == 4 ){ // XXZZ
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_x[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_x[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_z[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_z[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_z[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_z[i];
+    }
+    else if ( k == 5 ){ // YYXX
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_y[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_y[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_x[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_x[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_x[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_x[i];
+    }
+    else if ( k == 6 ){ // YYZZ
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_y[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_y[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_z[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_z[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_z[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_z[i];
+    }
+    else if ( k == 7 ){ // ZZXX
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_z[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_z[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_x[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_x[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_x[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_x[i];
+    }
+    else if ( k == 8 ){ // ZZYY
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_z[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_z[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_y[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_y[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_y[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_y[i];
+    }
+    else if ( k == 9 ){ // XYXY
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_x[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_y[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_x[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_y[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_x[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_y[i];
+    }
+    else if ( k == 10){ // XZXZ
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_x[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_z[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_x[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_z[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_x[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_z[i];
+    }
+    else if ( k == 11){ // YXYX
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_y[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_x[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_y[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_x[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_y[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_x[i];
+    }
+    else if ( k == 12){ // YZYZ
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_y[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_z[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_y[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_z[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_y[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_z[i];
+    }
+    else if ( k == 13){ // ZXZX
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_z[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_x[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_z[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_x[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_z[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_x[i];
+    }
+    else if ( k == 14){ // ZYZY
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_z[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_y[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_z[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_y[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_z[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_y[i];
+    }
+    else if ( k == 15){ // XYYX
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_x[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_y[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_y[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_x[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_y[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_x[i];
+    }
+    else if ( k == 16){ // XZZX
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_x[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_z[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_z[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_x[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_z[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_x[i];
+    }
+    else if ( k == 17){ // YXXY
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_y[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_x[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_x[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_y[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_x[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_y[i];
+    }
+    else if ( k == 18){ // YZZY
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_y[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_z[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_z[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_y[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_z[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_y[i];
+    }
+    else if ( k == 19){ // ZXXZ
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_z[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_x[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_x[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_z[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_x[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_z[i];
+    }
+    else if ( k == 20){ // ZYYZ
+        for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_z[it0*n1ex+i];
+        for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_y[i];
+        for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_y[i];
+        for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_z[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_y[i];
+        for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_z[i];
+    }
+    else{
+        cout << "ERROR:: getMU4pol k= " << k << " unknown." << endl;
+        return 1;
+    }
+
+    return IR2DOK;
+
+}
+
 complex<double> IR2D::getR2D_R1(int it0)
 // return the third order rephasing response function
 {
@@ -744,6 +920,7 @@ complex<double> IR2D::getR2D_R1(int it0)
     complex<double> *mu2_ce, *mu3_ce, *work2a, *work2b;
     complex<double> R2D, work0a, work0b;
     int i, k;
+    double weight;
 
     mu0_eg = new complex<double>[n1ex];
     mu1_eg = new complex<double>[n1ex];
@@ -759,33 +936,14 @@ complex<double> IR2D::getR2D_R1(int it0)
 
     R2D = complex_zero;
 
-    // get the isotropic average -- loop over x y and z
-    // all pulses have the same parallelization
-    for ( k = 0; k < 3; k ++ ){
-        if ( k == 0 ){
-            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_x[it0*n1ex+i];
-            for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_x[i];
-            for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_x[i];
-            for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_x[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_x[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_x[i];
+    // get the isotropically averaged spectrum -- see notes sec 5
+    for ( k = 0; k < 21; k ++ ){
+        if ( getMU4pol( mu0_eg, mu1_eg, mu2_eg, mu3_eg, mu2_ce, mu3_ce, it0, k ) != IR2DOK ){
+            exit(EXIT_FAILURE);
         }
-        else if ( k == 1 ){
-            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_y[it0*n1ex+i];
-            for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_y[i];
-            for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_y[i];
-            for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_y[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_y[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_y[i];
-        }
-        else if ( k == 2 ){
-            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_z[it0*n1ex+i];
-            for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_z[i];
-            for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_z[i];
-            for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_z[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_z[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_z[i];
-        }
+        // assign weights for parallel isotropic spectrum -- see notes sec 5
+        if ( k <=2 ) weight = 1./5.;
+        else weight = 1./15;
 
         // ground state bleach -- eq (27)
         // ############################################################
@@ -804,7 +962,7 @@ complex<double> IR2D::getR2D_R1(int it0)
         cblas_zdotu_sub( n1ex, work1a, 1, mu1_eg, 1, &work0b );
 
         // now meet in the middle to get the result
-        R2D   += work0b*work0a;
+        R2D   += weight*work0b*work0a;
         // ############################################################
 
 
@@ -833,7 +991,7 @@ complex<double> IR2D::getR2D_R1(int it0)
         cblas_zdotu_sub( n1ex, work1b, 1, mu2_eg, 1, &work0b );
     
         // now meet in the middle to get the result
-        R2D   += work0b*work0a;
+        R2D   += weight*work0b*work0a;
         // ############################################################
 
 
@@ -872,7 +1030,7 @@ complex<double> IR2D::getR2D_R1(int it0)
         // work0a = conj(work1b)*work1c
         for ( i = 0; i < n1ex; i ++ ) work1a[i] = conj(work1b[i]);
         cblas_zdotu_sub( n1ex, work1a, 1, work1c, 1, &work0a );
-        R2D    -= work0a;
+        R2D    -= weight*work0a;
         // ############################################################
     }
 
@@ -898,6 +1056,7 @@ complex<double> IR2D::getR2D_R2(int it0)
     complex<double> *mu2_ce, *mu3_ce, *work2a, *work2b;
     complex<double> R2D, work0a, work0b;
     int i, k;
+    double weight;
 
     mu0_eg = new complex<double>[n1ex];
     mu1_eg = new complex<double>[n1ex];
@@ -913,33 +1072,14 @@ complex<double> IR2D::getR2D_R2(int it0)
 
     R2D = complex_zero;
 
-    // get the isotropic average -- loop over x y and z
-    // all pulses have the same parallelization
-    for ( k = 0; k < 3; k ++ ){
-        if ( k == 0 ){
-            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_x[it0*n1ex+i];
-            for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_x[i];
-            for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_x[i];
-            for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_x[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_x[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_x[i];
+    // get the isotropically averaged spectrum -- see notes sec 5
+    for ( k = 0; k < 21; k ++ ){
+        if ( getMU4pol( mu0_eg, mu1_eg, mu2_eg, mu3_eg, mu2_ce, mu3_ce, it0, k ) != IR2DOK ){
+            exit(EXIT_FAILURE);
         }
-        else if ( k == 1 ){
-            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_y[it0*n1ex+i];
-            for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_y[i];
-            for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_y[i];
-            for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_y[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_y[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_y[i];
-        }
-        else if ( k == 2 ){
-            for ( i = 0; i < n1ex; i ++ )      mu0_eg[i] = eiH1_t0t1_mu_eg_t0_z[it0*n1ex+i];
-            for ( i = 0; i < n1ex; i ++ )      mu1_eg[i] = mu_eg_t1_z[i];
-            for ( i = 0; i < n1ex; i ++ )      mu2_eg[i] = mu_eg_t2_z[i];
-            for ( i = 0; i < n1ex; i ++ )      mu3_eg[i] = mu_eg_t3_z[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu2_ce[i] = mu_ce_t2_z[i];
-            for ( i = 0; i < n1ex*n2ex; i ++ ) mu3_ce[i] = mu_ce_t3_z[i];
-        }
+        // assign weights for parallel isotropic spectrum -- see notes sec 5
+        if ( k <=2 ) weight = 1./5.;
+        else weight = 1./15;
 
         // ground state bleach -- eq (30)
         // ############################################################
@@ -957,7 +1097,7 @@ complex<double> IR2D::getR2D_R2(int it0)
         cblas_zdotu_sub( n1ex, mu0_eg, 1, mu1_eg, 1, &work0b );
 
         // now meet in the middle to get the result
-        R2D   += work0b*work0a;
+        R2D   += weight*work0b*work0a;
         // ############################################################
 
 
@@ -985,7 +1125,7 @@ complex<double> IR2D::getR2D_R2(int it0)
         // work0a=conj(work1a)*mu2_eg
         for ( int i = 0; i < n1ex; i ++ ) work1b[i] = conj(work1a[i]);
         cblas_zdotu_sub( n1ex, work1b, 1, mu2_eg, 1, &work0a );
-        R2D   += work0b*work0a;
+        R2D   += weight*work0b*work0a;
         // ############################################################
 
 
@@ -1024,7 +1164,7 @@ complex<double> IR2D::getR2D_R2(int it0)
         // work0a = conj(work1b)*work1c
         for ( i = 0; i < n1ex; i ++ ) work1a[i] = conj(work1b[i]);
         cblas_zdotu_sub( n1ex, work1a, 1, work1c, 1, &work0a );
-        R2D    -= work0a;
+        R2D    -= weight*work0a;
         // ############################################################
     }
 
@@ -1433,17 +1573,18 @@ int main( int argc, char* argv[] )
             if ( spectrum.readDframe(it3) != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.setMUatT("t3")  != IR2DOK ) exit(EXIT_FAILURE);
             // get response function for all it0
+            #pragma omp parallel for private(ndx)
             for ( it0 = 0; it0 < spectrum.t1t3_npoints; it0 ++ ){
                 ndx = it0*spectrum.t1t3_npoints + it3-it2_max;
                 spectrum.R2D_R1[ndx] += spectrum.getR2D_R1(it0);
                 spectrum.R2D_R2[ndx] += spectrum.getR2D_R2(it0);
             }
-            //printProgress( it3-it2_max+1, spectrum.t1t3_npoints );
+            printProgress( it3-it2_max+1, spectrum.t1t3_npoints );
             if ( it3 == it3_max ) continue; // dont propigate the last frame
             if ( spectrum.prop_eiH1(it3,"t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);
             if ( spectrum.prop_eiH2(it3,"t2-t3" ) != IR2DOK ) exit(EXIT_FAILURE);
         }
-        //cerr << endl;
+        cerr << endl;
     }
 
     // account for dephasing phenomonelogically and normalize
