@@ -182,13 +182,13 @@ int IR2D::readParam( string _inpf_ )
     tellParam<double>( "lifetimeT1", lifetime_T1 );
     tellParam<double>( "anharm", anharm);
     tellParam<int>( "nsamples", nsamples );
-    tellParam<int>( "sample_every", sample_every );
+    tellParam<double>( "sample_every", sample_every );
     tellParam<int>( "fftlen", fftlen );
     tellParam<double>( "window0", window0 );
     tellParam<double>( "window1", window1 );
     cout << ">>> Done reading simulation parameters from " << _inpf_ << endl;
 
-    if ( trjlen < static_cast<int>(((nsamples-1)*sample_every + (2*t1t3_max + t2))/dt) ){
+    if ( trjlen < static_cast<int>(round(((nsamples-1)*sample_every + (2*t1t3_max + t2))/dt)) ){
         cout << "WARNING:: The given trajectory length is not long enough.\n" << 
                       "\t  Must be " <<  ((nsamples-1)*sample_every + (2*t1t3_max + t2))/dt << 
                       " frames long.\n\t  Check input file. Aborting." << endl;
@@ -196,7 +196,7 @@ int IR2D::readParam( string _inpf_ )
     }
 
     // set number of points in response functions based on t1t3_max and dt
-    t1t3_npoints = static_cast<int>(t1t3_max/dt+1);
+    t1t3_npoints = static_cast<int>(round(t1t3_max/dt));
 
     // set number of one- and two-exciton states
     n1ex = nchrom;
@@ -1525,9 +1525,9 @@ int main( int argc, char* argv[] )
     for ( sample = 0; sample < spectrum.nsamples; sample ++ ){
 
         // set bounds on time points
-        it0_min = sample*static_cast<int>(spectrum.sample_every/spectrum.dt);
+        it0_min = sample*static_cast<int>(round(spectrum.sample_every/spectrum.dt));
         it1_max = it0_min + spectrum.t1t3_npoints - 1;
-        it2_max = it1_max + static_cast<int>(spectrum.t2/spectrum.dt);
+        it2_max = it1_max + static_cast<int>(round(spectrum.t2/spectrum.dt));
         it3_max = it2_max + spectrum.t1t3_npoints - 1;
         //cout << it0_min << "-" << it1_max << " " << it2_max << "-" << it3_max << endl;
 
